@@ -24,6 +24,12 @@
 - **全局通用的设置**应在 `~/.claude/`（全局 CLAUDE.md、settings.json），不应重复写在每个项目里
 - **项目特有的设置**应在项目级配置，不应跑到全局去影响其他项目
 
+### Memory 的定位
+
+Memory 存储在 `~/.claude/projects/` 下，无法配置到项目仓库内（Claude Code 限制，相对路径不生效）。因此：
+- **Memory 不纳入项目 git 管理**，它是临时性的、个人的工作记忆
+- **需要持久化的重要内容不应留在 memory 里**，应通过 review 发现后引导到正确位置：核心概念 → CLAUDE.md，参考数据 → rules 文件，操作流程 → Skills
+
 ### 上下文开销
 
 - **固定开销**：系统指令、启用的 Skill 描述符、MCP 工具定义、LSP 状态
