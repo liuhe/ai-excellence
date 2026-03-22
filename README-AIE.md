@@ -2,11 +2,12 @@
 
 ## 这是什么
 
-AI Excellence 是一个集中管理所有项目 AI 协作配置的工程。通过它你可以：
+AI Excellence 是一个集中管理所有项目 AI 协作配置的工程。核心关注**各项设置是否放对了地方**：
 
-- 统一查看和管理所有项目的 AI 设置（CLAUDE.md、hooks、skills、权限等）
-- 管理全局 Claude 配置（settings.json、全局 CLAUDE.md）
-- 使用模板快速为新项目建立 AI 协作规范
+- 审查各项目的 AI 设置分层是否合理（常驻约束在 CLAUDE.md？低频知识在 Skills？硬性校验在 Hooks？）
+- 识别错位的设置（全局的跑到了项目里、项目特有的跑到了全局）
+- 管理全局 Claude 配置（settings.json、全局 CLAUDE.md），通过 git 追踪变更
+- 提供模板帮助新项目快速建立合理的分层配置
 
 ## 快速开始
 
@@ -23,14 +24,8 @@ ln -s /path/to/your-project projects/your-project
 在本工程的 Claude Code 中使用：
 
 ```
-/review              # 审查所有项目
-/review your-project # 审查单个项目
-```
-
-### 3. 应用最佳实践模板
-
-```
-/apply-template your-project
+/aie-review              # 审查所有项目
+/aie-review your-project # 审查单个项目，发现问题可直接修复
 ```
 
 ## 目录说明
@@ -51,6 +46,6 @@ ln -s /path/to/your-project projects/your-project
 
 详见 [docs/methodology.md](docs/methodology.md)，核心思路：
 
-1. **分层管理上下文**：常驻约束放 CLAUDE.md，低频知识放 Skills，硬性校验放 Hooks，大体量探索放 Subagents
+1. **设置放对地方**：常驻约束放 CLAUDE.md，低频知识放 Skills，硬性校验放 Hooks，大体量探索放 Subagents。全局通用的放全局，项目特有的留项目
 2. **主动管理上下文开销**：关注 token 消耗，避免上下文膨胀
 3. **验证优先**：写好 Prompt 后，"验证"应该放在第一位
