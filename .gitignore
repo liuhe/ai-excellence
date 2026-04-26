@@ -1,2 +1,4 @@
 projects/*
 !projects/.gitkeep
+.claude_global
+.DS_Store

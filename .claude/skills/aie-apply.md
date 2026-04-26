@@ -12,6 +12,10 @@ user_invocable: true
 
 - `<project>`：必填，`projects/` 下软链名。无参数则报错并列出可用项目。
 
+## 关键原则
+
+`~/.claude/CLAUDE.md` 只放极少数纯个人偏好；跨项目通用的工作规范应通过本命令推到项目级 `CLAUDE.md`，而不是堆在全局。本命令写入的就是项目级 `CLAUDE.md`，遵循这一原则。
+
 ## 注意：两个 `projects/` 含义不同
 
 - **ai-excellence 的 `projects/`**：被管工程的**软链入口**（`projects/<name>` 是软链）
@@ -65,6 +69,17 @@ user_invocable: true
 如果要添加或修改 `projects/` 下的目录结构（增加新文件类型、改变命名约定等），必须先与用户确认。
 ```
 
+### B'. 被管工程必须存在 `.claude_global/` 目录与 `.gitignore` 条目
+
+`<target>/.claude_global/` 目录内含 3 个软链，分别指向 `~/.claude/` 下的配置：
+- `CLAUDE.md` → `~/.claude/CLAUDE.md`
+- `settings.json` → `~/.claude/settings.json`
+- `settings.local.json` → `~/.claude/settings.local.json`
+
+`<target>/.gitignore` 必须包含 `.claude_global`（个人配置不应入团队 git）。
+
+设计意图：从任意工程根目录都能访问/编辑全局配置（`vi .claude_global/CLAUDE.md` 等价于改 `~/.claude/CLAUDE.md`），同时确保不被误提交。
+
 ### B. 被管工程的 .claude/settings.json 必须包含的 hooks
 
 ```json
@@ -106,6 +121,8 @@ user_invocable: true
    - 检查是否包含 A 节四块：硬性约束、工作模式、项目文件结构、知识库结构约束
    - 读 `<target>/.claude/settings.json`（不存在视为缺失）
    - 检查 hooks 是否包含 B 节两个 hook（按 hookEventName 与关键内容判断，不要求字符串完全一致）
+   - 检查 `<target>/.claude_global/` 是否存在且包含 3 个有效软链分别指向 `~/.claude/{CLAUDE.md,settings.json,settings.local.json}`
+   - 检查 `<target>/.gitignore` 是否包含 `.claude_global`
 
 3. **输出审查报告**
    - 列出缺失项与不合规项
@@ -114,6 +131,8 @@ user_invocable: true
 4. **生成修改方案**
    - CLAUDE.md：合并而非覆盖（保留项目原有内容，把规范追加/插入到合适位置；已有但不合规则给出局部修改）
    - `.claude/settings.json`：合并 hooks 字段，不动其他字段
+   - `.claude_global/` 目录：缺失则创建，并在内部建 3 个软链 → `~/.claude/{CLAUDE.md,settings.json,settings.local.json}`
+   - `.gitignore`：缺 `.claude_global` 则追加
    - `projects/` 目录：**不主动创建**，留给项目模式启动时按需创建
 
 5. **展示 diff，请用户逐项确认**
