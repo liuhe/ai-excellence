@@ -2,32 +2,23 @@
 
 ## 项目定位
 
-这是一个 AI 协作质量管控中心，核心关注：**各项设置是否放对了地方**。
+这是一个 AI 协作管控中心，核心职责：**把统一的 AI 协作规范应用到 `projects/` 下的被管工程，并通过 git 追踪全局配置**。
 
-按 docs/methodology.md 的分层原则，判断设置归属是否合理：
-- 常驻约束 → CLAUDE.md
-- 低频知识 → Skills
-- 硬性校验 → Hooks
-- 全局通用 → global/（~/.claude/）
-- 项目特有 → 项目级配置
-
-"有没有"和"规不规范"是次要的，**"放没放对"才是核心**。
+规范的具体内容写在 `/aie-apply` 命令里（被管工程的 CLAUDE.md 应包含什么、settings.json 应有哪些 hooks）。命令负责审查现状、给出 diff、用户确认后合并写入。
 
 ## 工作原则
 
-- `projects/` 下的软链工程只读审查，改动需用户确认
-- 所有建议必须基于 `docs/methodology.md` 中的分层方法论
+- `projects/` 下的软链工程默认只读，所有改动必须先给 diff 让用户确认
+- 本工程自身**不需要** `projects/<initiative>/` 这套结构（那是被管工程的规范），本工程的 `projects/` 只是被管工程的软链入口
 
 ## 项目结构
 
-- `global/` — 全局 Claude 设置（通过软链管理 ~/.claude/ 下的配置文件）
-- `projects/` — 软链的受管工程
-- `templates/` — 可复用的 CLAUDE.md、hooks、skills 模板
-- `.claude/skills/` — 本项目的 Skills（/aie-review）
-- `docs/` — 方法论文档
+- `global/` — 全局 Claude 设置真身（`~/.claude/` 下的 CLAUDE.md、settings.json、settings.local.json 都软链到这里）
+- `projects/` — 被管工程的软链入口
+- `.claude/skills/aie-apply.md` — 应用规范的命令实现
+- `docs/methodology.md` — 背景方法论（分层原则、上下文管理），不直接驱动命令逻辑
 
 ## 关键约束
 
-- 修改 `global/` 下的文件会直接影响全局 Claude 行为（因为是软链的真身）
-- 修改前必须告知用户影响范围
-- templates/ 是参考模板，不会自动生效
+- 修改 `global/` 下的文件会直接影响全局 Claude 行为（因为是软链的真身），改前必须告知用户影响范围
+- `/aie-apply` 写入被管工程时必须合并而非覆盖，保留项目原有内容
