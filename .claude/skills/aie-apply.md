@@ -49,12 +49,14 @@ user_invocable: true
 
 ### 对话过程中
 
-随时更新，**对话结束前必须主动确认日志已是最新**。两类知识独立维护，不互斥：
+随时更新，**对话结束前必须主动确认日志已是最新**。按知识性质分层落位（详见 `knowledge-structure.md`）：
 
-- **项目知识**（任务进展、注意事项、踩坑）→ 更新 `projects/<name>/tasks.md` 和 `log.md`
-- **仓库级知识**（主机变更、端口、部署方式、架构决策等）→ 更新 `CLAUDE.md`
+- **核心常驻约束**（每次对话都需要的规则） → `CLAUDE.md`，保持精简
+- **参考数据 / 业务规则**（按需引用的数据、映射、配置） → 独立文件（如 `docs/<topic>.md`），`CLAUDE.md` 仅放一行指针
+- **低频操作流程**（步骤序列） → `.claude/skills/<name>.md`
+- **项目（initiative）内进展**（任务状态、踩坑、决策） → `projects/<name>/{tasks,log}.md`
 
-项目模式下两类都可能需要更新，不要因为在项目模式就忽略全局知识库。
+不确定该放哪？停下来与用户确认。
 
 ### 项目文件结构
 
@@ -94,7 +96,7 @@ user_invocable: true
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\", \"additionalContext\": \"处理用户请求前，先判断上一轮是否有需要记录的内容——操作结果、领域知识、决策等。项目级内容→projects/<name>/tasks.md和log.md，仓库级知识→CLAUDE.md。有则先更新，没有则直接处理请求。\"}}'"
+            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\", \"additionalContext\": \"处理用户请求前，先判断上一轮是否有需要记录的内容（操作结果、领域知识、决策等）。按 knowledge-structure.md 的分层落位：核心常驻约束→CLAUDE.md；参考数据→独立文件；操作流程→.claude/skills/；项目内进展→projects/<name>/{tasks,log}.md。有则先更新，没有则直接处理请求。\"}}'"
           }
         ]
       }
