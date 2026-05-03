@@ -1,5 +1,4 @@
 name: ProxyTier
-table_name: proxy_tier
 fields:
   - id: "Long, auto-increment primary key"
   - name: "String, display name (e.g., '高速版', '极速版')"

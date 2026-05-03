@@ -24,20 +24,29 @@ Produce a directory `model/` with the following structure:
 model/
 ├── business.yaml              # business view overview (full content; small enough to not split)
 ├── business/                  # business view details (optional)
-├── domain.yaml                # domain model overview (entity list + relationships)
-├── domain/                    # domain model details
-│   ├── <Entity>.yaml          # one file per entity (full fields, state_machine, rules, notes)
-│   └── er.svg                 # ER diagram (referenced via diagram field; AI may emit a TODO if not yet generated)
-├── system-logic.yaml          # system logic overview (application list + topology)
-├── system-logic/              # system logic details
-│   ├── <app-name>.yaml        # one file per application (use_cases, pages, infrastructure)
+├── business-model.yaml        # business-level entities (was: domain.yaml)
+├── business-model/            # entity details
+│   ├── <Entity>.yaml          # one file per business entity（含 archetype 四色）
+│   └── er.svg                 # ER diagram
+├── applications.yaml          # applications view overview (application list + topology)
+├── applications/              # applications view details
+│   ├── <app-name>.yaml        # one file per application (use_cases, pages, infrastructure, **domain_model**[DDD]）
 │   └── application-topology.svg
 ├── deployment.yaml            # deployment overview
 └── deployment/                # deployment details
     └── topology.svg
 ```
 
-The four views are: **business**, **domain**, **system-logic**, **deployment**. Each view has a single overview YAML at the top, with optional details inside a same-named subdirectory.
+The four views are: **business**, **applications**, **deployment**. Business view 内含 `business-model`（业务实体清单）；应用视图下每个 app 的 detail 内可有可选的 `domain_model`（DDD 应用领域模型）。Each view has a single overview YAML at the top, with optional details inside a same-named subdirectory.
+
+**两层模型的本质区别**（详见 schema NOTE 15）：
+
+| 层 | 文件位置 | 建模工具 | 受众 |
+|----|---------|---------|------|
+| 业务模型 | `business-model.yaml` + `business-model/` | 四色建模（archetype）| PO / 业务方 / 跨工程对齐 |
+| 应用领域模型 | 各 `applications/<app>.yaml` 的 `domain_model:` 段 | DDD 构造块（Aggregate / VO / Repo / Domain Service / Domain Event） | 该 app 的开发者 |
+
+同一个业务实体在不同 app 里可有不同的 DDD 实现（甚至有的 app 不实现）。
 
 ### Schema Reference
 
@@ -74,14 +83,13 @@ business_use_cases:
         interest: <string>
 ```
 
-#### domain.yaml
+#### business-model.yaml
 
 ```yaml
 entities:                                                    # overview list — one line per entity
   - name: <PascalCase>
-    table_name: <snake_case>                                # optional
     summary: <one-line description>
-    detail: ./domain/<Entity>.yaml                          # path to the detail file
+    detail: ./business-model/<Entity>.yaml                  # path to the detail file
 relationships:
   - from: <entity name>                                     # the "whole" for composition
     to: <entity name>                                       # the "part" for composition
@@ -89,15 +97,15 @@ relationships:
     relation: association | composition                     # optional, default association; composition = `to` 是值类型/嵌入式部件，无独立身份与生命周期
     via: <field name>                                       # optional
     note: <string>                                          # optional
-diagram: ./domain/er.svg                                    # optional
+diagram: ./business-model/er.svg                            # optional
 ```
 
-#### domain/&lt;Entity&gt;.yaml
+#### business-model/&lt;Entity&gt;.yaml
 
 ```yaml
 name: <PascalCase>
-table_name: <snake_case>                                    # optional
 archetype: moment-interval | role | party-place-thing | description   # optional, 4-color modeling
+implements: [<RoleName>, ...]                                           # optional, 实现的 Role（仅 archetype=role 的实体可作为目标）
 fields:
   - <fieldName>: "<Type>, <description>"
 notes: <string>                                             # optional
@@ -115,7 +123,7 @@ rules:                                                       # optional
     related_use_cases: [<app-name>.<UseCaseName>, ...]      # optional, cross-namespace refs
 ```
 
-#### system-logic.yaml
+#### applications.yaml
 
 ```yaml
 applications:                                               # overview list
@@ -125,17 +133,17 @@ applications:                                               # overview list
       language: <string>
       frameworks: [<string>, ...]                           # optional
     summary: <one-line>
-    detail: ./system-logic/<app-name>.yaml
+    detail: ./applications/<app-name>.yaml
 application_topology:                                        # was system.overview in older schema
   - from: <application or external actor/device>
     to: <application or external actor/device>
     label: <semantic description>
     type: sync | call
     details: [<UseCaseName>, ...]                           # optional
-diagram: ./system-logic/application-topology.svg            # optional
+diagram: ./applications/application-topology.svg            # optional
 ```
 
-#### system-logic/&lt;app-name&gt;.yaml
+#### applications/&lt;app-name&gt;.yaml
 
 ```yaml
 name: <kebab-case>
@@ -169,6 +177,46 @@ pages:                                                       # frontend / client
       - label: <string>
         url: <string>
     display_mappings: [<natural language>, ...]             # optional
+domain_model:                                                # OPTIONAL — DDD 应用领域模型；简单 app 通常不需要
+  roles:                                                     # optional — 应用层接口/角色定义
+    - name: <PascalCase>                                     # e.g., MessageDecoder
+      methods: [<string>, ...]                               # 操作签名
+      notes: <string>                                        # optional
+  aggregates:
+    - name: <PascalCase>
+      business_entity: <BusinessEntityName>                  # optional — 跨层映射：实现的业务实体
+      implements: [<RoleName>, ...]                          # optional — 本聚合实现的 Role（本 app 的 roles）
+      root: <RootEntityName>
+      entities:                                              # 聚合内的实体（除根之外）
+        - name: <PascalCase>
+          implements: [<RoleName>, ...]                      # optional
+          fields:
+            - <fieldName>: "<Type>, <description>"
+      value_objects:
+        - name: <PascalCase>
+          implements: [<RoleName>, ...]                      # optional
+          fields:
+            - <fieldName>: "<Type>, <description>"
+      invariants: [<natural language>, ...]                  # 聚合不变量
+      notes: <string>                                        # optional
+  value_objects:                                             # optional — 跨聚合共享的 VO
+    - name: <PascalCase>
+      implements: [<RoleName>, ...]                          # optional
+      fields:
+        - <fieldName>: "<Type>, <description>"
+  repositories:                                              # optional
+    - name: <PascalCase>Repository
+      aggregate: <AggregateName>
+      operations: [<string>, ...]                            # 例如 ["findById(id)", "save(account)"]
+  domain_services:                                           # optional — 不属于单一聚合的领域逻辑
+    - name: <PascalCase>Service
+      operations: [<string>, ...]
+      notes: <string>                                        # optional
+  domain_events:                                             # optional
+    - name: <PascalCase>Event                                # 例如 AccountActivated
+      published_when: <string>                               # 何时发布
+      payload:                                               # optional
+        - <fieldName>: "<Type>, <description>"
 ```
 
 #### deployment.yaml
@@ -201,9 +249,9 @@ Maintain all four views, but pick the right entry point for the project:
 
 | Project Type | Start From | Then Expand To |
 |---|---|---|
-| Requirement-driven / exploratory | business view (use cases) | → domain → system-logic → deployment |
-| Technology-driven / refactoring | system-logic (applications) | → business (back-fill) → domain → deployment |
-| Data-centric | domain view | → business → system-logic → deployment |
+| Requirement-driven / exploratory | business view (use cases) | → business-model → applications → deployment |
+| Technology-driven / refactoring | applications view | → business (back-fill) → business-model → deployment |
+| Data-centric | business-model | → business → applications → deployment |
 
 Overview is mandatory for every view. Details are produced as the model deepens.
 
@@ -225,23 +273,37 @@ Overview is mandatory for every view. Details are produced as the model deepens.
 |---|---|---|---|
 | Business use case | `business.yaml` business_use_cases | Value proposition | WHO gets WHAT value, links to system use cases |
 | System use case | `business.yaml` systems[].use_cases | System capability declaration | name + actor + entry, NO rules |
-| Application use case | `system-logic/<app>.yaml` use_cases | Implementation | rules + api + associations |
+| Application use case | `applications/<app>.yaml` use_cases | Implementation | rules + api + associations |
 
 Traceability: **page → app use case → system use case → business use case**. Pages do NOT directly reference business use cases.
 
-**4. Domain Models**
+**4. Business Model（业务模型 — 不是代码模型）**
 
-- Each entity gets its own file in `domain/`.
-- Use the compact field format: `fieldName: "Type, description"`.
-- Supported types: `String`, `Long`, `Integer`, `int`, `boolean`, `Enum(Value1/Value2/...)`, or domain-specific types.
-- For entities with status/lifecycle, define `state_machine` inline.
-- Cross-reference application use cases via `related_use_cases: [<app-name>.<UseCaseName>]`.
-- `domain.yaml` only lists entities + relationships at overview level — full fields/rules go in detail files.
+- 内容：业务概念在"世界里"长什么样；跨 app 共用的领域词汇。受众：PO / 业务方 / 跨工程对齐。
+- 每个实体一份文件 `business-model/<Entity>.yaml`。
+- 用紧凑字段格式：`fieldName: "Type, description"`。
+- 支持类型：`String`, `Long`, `Integer`, `boolean`, `Enum(Value1/Value2/...)`, 或领域类型。
+- 有状态/生命周期 → 加 `state_machine`。
+- 标注 `archetype`（四色建模：moment-interval / role / party-place-thing / description）。
+- 不要写代码层细节（不写 table_name、不写聚合边界、不写 repository）——那些是各 app 的 `domain_model` 段的事。
+- `business-model.yaml` 只列实体 + 关系；完整字段/规则在 detail 文件。
 
-**5. System Logic and Topology**
+**4.5. Application Domain Model（应用领域模型 — 可选，DDD）**
 
-- Each independently deployable unit is an application; one file per app under `system-logic/`.
-- `application_topology` (in `system-logic.yaml`) captures application interactions.
+- 内容：本 app 的代码层结构如何实现业务概念；每个 app 一份。受众：该 app 的开发者。
+- 写在 `applications/<app>.yaml` 的 `domain_model:` 段（可选，简单 frontend / proxy / external 通常不需要）。
+- 用 DDD 构造块：
+  - **Aggregate（聚合）**：根实体 + 内含实体 + VO + 事务边界 + 不变量。`business_entity: <BusinessEntityName>` 跨层映射到业务实体；`implements: [<RoleName>...]` 列出本聚合扮演的本 app 内角色。
+  - **Value Object（值对象）**：不可变，按值相等。可在聚合内或跨聚合共享。
+  - **Repository（仓储）**：对聚合的集合抽象。
+  - **Domain Service（领域服务）**：不属单一聚合的领域逻辑。
+  - **Domain Event（领域事件）**：业务上有意义的状态变化通知。
+- 同一业务实体可在不同 app 有不同的 DDD 实现（甚至有的 app 不实现）。
+
+**5. Applications and Topology**
+
+- Each independently deployable unit is an application; one file per app under `applications/`.
+- `application_topology` (in `applications.yaml`) captures application interactions.
   - Arrow direction = **semantic flow** (data/value direction), NOT technical call direction.
     Example: if proxy polls manager-server for user data, arrow is `manager-server → proxy: Provide User Data`.
   - `type`: `sync` (async sync, polling, push, MQ, ETL) or `call` (real-time RPC/REST).
@@ -305,9 +367,9 @@ Intentionally omit — these are HOW concerns derived during code generation:
 
 Before finalizing, verify:
 
-- [ ] All four view files (`business.yaml`, `domain.yaml`, `system-logic.yaml`, `deployment.yaml`) exist; deployment may be a placeholder if not yet specified
-- [ ] Every entity in `domain.yaml` has a corresponding detail file in `domain/`
-- [ ] Every application in `system-logic.yaml` has a corresponding detail file in `system-logic/`
+- [ ] All view overview files (`business.yaml`, `business-model.yaml`, `applications.yaml`, `deployment.yaml`) exist; deployment may be a placeholder if not yet specified
+- [ ] Every entity in `business-model.yaml` has a corresponding detail file in `business-model/`
+- [ ] Every application in `applications.yaml` has a corresponding detail file in `applications/`
 - [ ] Every external party participant appears in at least one use case or topology edge
 - [ ] External parties group related participants together
 - [ ] Business use cases have `stakeholder_interests` defined when multiple stakeholders exist
@@ -323,7 +385,7 @@ Before finalizing, verify:
 - [ ] Rules capture all non-obvious business logic (obvious CRUD needs no rules)
 - [ ] No implementation details leaked (no URLs in models other than `api` field, no class names, no SQL)
 - [ ] Entities with status/lifecycle have a `state_machine` defined
-- [ ] All non-trivial entity relationships are captured in `domain.yaml`
+- [ ] All non-trivial entity relationships are captured in `business-model.yaml`
 - [ ] Application topology covers all application-to-application and actor-to-application interactions
 - [ ] Topology arrow directions reflect semantic flow, not technical call direction
 - [ ] SVG diagrams (when present) do not carry information beyond YAML

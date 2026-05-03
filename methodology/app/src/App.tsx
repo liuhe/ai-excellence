@@ -88,27 +88,40 @@ function buildTree(model: Model): TreeNode[] {
               ],
             })),
         },
+        // 业务模型（业务实体，原"数据模型"，下沉到业务视图）
+        {
+          id: 'business-model', label: '业务模型', icon: '📊', children:
+            dataModels.map((dm, i) => ({
+              id: `data-model:${i}`, label: n(dm, 'name', '名称'), icon: '▪',
+              tag: (dm.state_machine || dm.状态机) ? '有状态机' : undefined,
+            })),
+        },
       ],
     },
-    // 2. 数据模型
-    {
-      id: 'data-models', label: '数据模型', icon: '📊', children:
-        dataModels.map((dm, i) => ({
-          id: `data-model:${i}`, label: n(dm, 'name', '名称'), icon: '▪',
-          tag: (dm.state_machine || dm.状态机) ? '有状态机' : undefined,
-        })),
-    },
-    // 3. 应用视图
+    // 2. 应用视图（applications view）
     {
       id: 'applications', label: '应用视图', icon: '🏗️', children:
         apps.map((app, i) => {
           const ucs = (app.use_cases || app.用例 || [])
           const pages = (app.pages || app.页面 || [])
+          const dm = (app as { domain_model?: { roles?: Array<{ name?: string }>; aggregates?: Array<{ name?: string }>; value_objects?: Array<{ name?: string }>; repositories?: Array<{ name?: string }>; domain_services?: Array<{ name?: string }>; domain_events?: Array<{ name?: string }> } }).domain_model
+          const hasDomainModel = !!(dm && (dm.roles?.length || dm.aggregates?.length || dm.value_objects?.length || dm.repositories?.length || dm.domain_services?.length || dm.domain_events?.length))
           return {
             id: `app:${i}`, label: n(app, 'name', '名称'), icon: '▸',
             tag: (app.type || app.类型 || '') as string,
             children: [
               { id: `app-trace:${i}`, label: '追溯链路', icon: '↳' },
+              ...(hasDomainModel ? [{
+                id: `app-domain:${i}`, label: '应用领域模型', icon: '🧱',
+                children: [
+                  ...(dm!.roles || []).map((r, j) => ({ id: `app-role:${i}:${j}`, label: r.name || '', icon: '🎭' })),
+                  ...(dm!.aggregates || []).map((a, j) => ({ id: `app-agg:${i}:${j}`, label: a.name || '', icon: '◆' })),
+                  ...(dm!.value_objects || []).map((v, j) => ({ id: `app-vo:${i}:${j}`, label: v.name || '', icon: '◇' })),
+                  ...(dm!.repositories || []).map((r, j) => ({ id: `app-repo:${i}:${j}`, label: r.name || '', icon: '🗄️' })),
+                  ...(dm!.domain_services || []).map((s, j) => ({ id: `app-svc:${i}:${j}`, label: s.name || '', icon: '⚙' })),
+                  ...(dm!.domain_events || []).map((e, j) => ({ id: `app-evt:${i}:${j}`, label: e.name || '', icon: '⚡' })),
+                ],
+              }] : []),
               ...pages.map((p, j) => ({ id: `app-page:${i}:${j}`, label: n(p, 'name', '名称'), icon: '📄' })),
               ...(() => {
                 const aPkgMap = new Map<string, { uc: typeof ucs[0]; idx: number }[]>()
@@ -149,28 +162,43 @@ function resolveDetailPath(base: string, ref: string): string {
 
 async function loadModel(modelName: string): Promise<Model> {
   const base = `/${modelName}`
-  const [business, domainOverview, systemLogicOverview] = await Promise.all([
+  const [business, businessModelOverview, applicationsOverview] = await Promise.all([
     fetchYaml(`${base}/business.yaml`),
-    fetchYaml(`${base}/domain.yaml`),
-    fetchYaml(`${base}/system-logic.yaml`),
+    fetchYaml(`${base}/business-model.yaml`),
+    fetchYaml(`${base}/applications.yaml`),
   ])
 
-  const entities = (domainOverview.entities || []) as Array<{ detail?: string; name?: string }>
-  const apps = (systemLogicOverview.applications || []) as Array<{ detail?: string; name?: string }>
+  const entities = (businessModelOverview.entities || []) as Array<{ detail?: string; name?: string }>
+  const apps = (applicationsOverview.applications || []) as Array<{ detail?: string; name?: string }>
+
+  // Helper：取出 detail 文件的所在目录（带尾斜杠），用作该实体/应用 markdown 字段的相对链接基准
+  const detailDir = (detailPath: string): string => {
+    const full = resolveDetailPath(base, detailPath)
+    return full.replace(/\/[^/]+$/, '/')
+  }
+  const augment = async (e: { detail?: string }) => {
+    if (!e.detail) return e
+    const data = await fetchYaml(resolveDetailPath(base, e.detail))
+    return { ...data, _sourceDir: detailDir(e.detail) }
+  }
 
   const [entityDetails, appDetails] = await Promise.all([
-    Promise.all(entities.map(e => e.detail ? fetchYaml(resolveDetailPath(base, e.detail)) : Promise.resolve(e))),
-    Promise.all(apps.map(a => a.detail ? fetchYaml(resolveDetailPath(base, a.detail)) : Promise.resolve(a))),
+    Promise.all(entities.map(augment)),
+    Promise.all(apps.map(augment)),
   ])
 
   return {
+    basePath: `${base}/`,
     business: business as Model['business'],
     system: {
       data_models: entityDetails as Model['system']['data_models'],
-      relationships: (domainOverview.relationships || []) as Model['system']['relationships'],
-      overview: (systemLogicOverview.application_topology || []) as Model['system']['overview'],
-      topologyDiagram: systemLogicOverview.diagram
-        ? resolveDetailPath(base, systemLogicOverview.diagram as string)
+      relationships: (businessModelOverview.relationships || []) as Model['system']['relationships'],
+      businessModelDiagram: businessModelOverview.diagram
+        ? resolveDetailPath(base, businessModelOverview.diagram as string)
+        : undefined,
+      overview: (applicationsOverview.application_topology || []) as Model['system']['overview'],
+      topologyDiagram: applicationsOverview.diagram
+        ? resolveDetailPath(base, applicationsOverview.diagram as string)
         : undefined,
       applications: appDetails as Model['system']['applications'],
     } as Model['system'],

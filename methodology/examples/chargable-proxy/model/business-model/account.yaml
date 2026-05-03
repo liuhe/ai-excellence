@@ -1,5 +1,4 @@
 name: Account
-table_name: account
 fields:
   - id: "Long, auto-increment primary key"
   - username: "String, unique, used as HTTP proxy username"

@@ -195,3 +195,94 @@ use_cases:
         related_entities: [Package.usedBytes]
       - content: If usedBytes >= quotaBytes after update, mark package as Exhausted and try to activate next Pending package
         related_entities: [Package.status]
+
+# === DDD 应用领域模型（manager-server 的代码层结构）===
+domain_model:
+
+  roles:
+    - name: PackageActivationTarget
+      methods:
+        - "activateNextPending(): 把当前 Active Package 标记为 Exhausted/Expired，将下一个 Pending Package 设为 Active"
+      notes: 聚合实现此角色后，PackageActivator 领域服务可统一调用，不需要按聚合类型分支
+    - name: UsageConsumer
+      methods:
+        - "applyUsage(record: UsageRecord): 增量扣减并触发可能的 Exhausted 状态转换"
+
+  aggregates:
+    - name: AccountAggregate
+      business_entity: Account
+      implements: [PackageActivationTarget, UsageConsumer]
+      root: Account
+      invariants:
+        - Account 必有至少一个 Pending / Active Package（无包账户视为已禁用）
+        - 同时只能有一个 Active Package；激活下一个时需先把当前 Active 设为 Exhausted/Expired
+      notes: |-
+        Account 是聚合根；Package 作为内含实体管理生命周期与配额扣减。
+        所有 Package 状态变更（Pending → Active → Exhausted/Expired）通过 Account 上的方法触发，
+        保证不变量。
+
+    - name: PackageTemplateAggregate
+      business_entity: PackageTemplate
+      root: PackageTemplate
+      invariants:
+        - quotaBytes 与 validityDays 创建后不可变更（变更需新建模板）
+
+    - name: TaobaoOrderAggregate
+      business_entity: TaobaoOrder
+      root: TaobaoOrder
+      entities:
+        - name: TaobaoSku
+          fields:
+            - skuId: "String, 淘宝 SKU 全局唯一 ID"
+      invariants:
+        - 同一订单 skuId 重复处理时幂等（按 (orderId, skuId) 去重）
+
+  value_objects:
+    - name: UsageRecord
+      fields:
+        - accountId: "Long, 引用 Account"
+        - packageId: "Long, 引用 Package"
+        - bytesTransferred: "Long, 本次记录的转发字节数"
+        - timestamp: "Long, 毫秒时间戳"
+
+  repositories:
+    - name: AccountRepository
+      aggregate: AccountAggregate
+      operations: [findById, findByUsername, save, findActiveAccounts]
+    - name: PackageTemplateRepository
+      aggregate: PackageTemplateAggregate
+      operations: [findById, findBySkuMapping, save]
+    - name: TaobaoOrderRepository
+      aggregate: TaobaoOrderAggregate
+      operations: [findByOrderId, save, markProcessed]
+
+  domain_services:
+    - name: PackageActivator
+      operations:
+        - "activateNextPending(accountId): 把当前 Active 标记为 Exhausted/Expired，把下一个 Pending 设为 Active"
+      notes: 跨 Account 与 Package 的状态机协调，不属于单一聚合
+
+    - name: SkuToPackageMapper
+      operations:
+        - "resolveTemplate(skuId): 查 SkuPackageMapping 配置，返回对应的 PackageTemplate"
+      notes: 静态映射，无副作用，可视为查找服务
+
+  domain_events:
+    - name: PackageActivated
+      published_when: 一个 Package 从 Pending 转入 Active
+      payload:
+        - accountId: "Long"
+        - packageId: "Long"
+        - quotaBytes: "Long"
+
+    - name: PackageExhausted
+      published_when: 当 usedBytes >= quotaBytes 时（增量更新触发）
+      payload:
+        - accountId: "Long"
+        - packageId: "Long"
+
+    - name: AccountCreated
+      published_when: 批量创建账户成功后，每个 Account 一次
+      payload:
+        - accountId: "Long"
+        - username: "String"

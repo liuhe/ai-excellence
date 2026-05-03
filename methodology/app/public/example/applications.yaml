@@ -6,26 +6,26 @@ applications:
       语言: TypeScript
       框架: [React, react-router-dom]
     summary: 管理端 + 用户自助前端
-    detail: ./system-logic/manager-ui.yaml
+    detail: ./applications/manager-ui.yaml
   - name: manager-server
     type: backend
     tech_stack:
       语言: Java
       框架: [Spring Boot, Spring Data JPA]
     summary: 业务后端，账户/套餐/请求数据管理
-    detail: ./system-logic/manager-server.yaml
+    detail: ./applications/manager-server.yaml
   - name: proxy
     type: proxy
     tech_stack:
       语言: Go
     summary: 鉴权代理，前置 http-proxy
-    detail: ./system-logic/proxy.yaml
+    detail: ./applications/proxy.yaml
   - name: http-proxy
     type: external
     tech_stack:
       实现: 任意HTTP代理应用
     summary: 上游通用 HTTP 代理
-    detail: ./system-logic/http-proxy.yaml
+    detail: ./applications/http-proxy.yaml
 
 application_topology:
   - from: Switch Game Player
@@ -64,4 +64,4 @@ application_topology:
     type: call
     details: [Proxy HTTP Request]
 
-diagram: ./system-logic/application-topology.svg
+diagram: ./applications/application-topology.svg

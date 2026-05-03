@@ -1,5 +1,4 @@
 name: Package
-table_name: package
 fields:
   - id: "Long, auto-increment primary key"
   - accountId: "Long, references Account"

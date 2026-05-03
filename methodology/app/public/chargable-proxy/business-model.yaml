@@ -1,40 +1,32 @@
-# Domain Model — Overview
-# Detail per entity: ./domain/<entity>.yaml
-# ER diagram: ./domain/er.svg (TODO: generate)
+# Business Model — Overview
+# Detail per entity: ./business-model/<entity>.yaml
+# ER diagram: ./business-model/er.svg (TODO: generate)
 
 entities:
   - name: Account
-    table_name: account
     summary: Proxy user with credentials. Created by admin or auto-fulfillment.
-    detail: ./domain/account.yaml
+    detail: ./business-model/account.yaml
   - name: Package
-    table_name: package
     summary: Traffic quota grant for an account; only one Active per account at a time.
-    detail: ./domain/package.yaml
+    detail: ./business-model/package.yaml
   - name: RedemptionCode
-    table_name: redemption_code
     summary: One-time code that creates a Package on redemption.
-    detail: ./domain/redemption-code.yaml
+    detail: ./business-model/redemption-code.yaml
   - name: UsageLog
-    table_name: usage_log
     summary: Per-request traffic record (batched from auth-proxy).
-    detail: ./domain/usage-log.yaml
+    detail: ./business-model/usage-log.yaml
   - name: TaobaoOrder
-    table_name: taobao_order
     summary: Taobao trade tracking + fulfillment state machine.
-    detail: ./domain/taobao-order.yaml
+    detail: ./business-model/taobao-order.yaml
   - name: ProxyTier
-    table_name: proxy_tier
     summary: Speed tier backed by a distinct proxy node (高速版/极速版).
-    detail: ./domain/proxy-tier.yaml
+    detail: ./business-model/proxy-tier.yaml
   - name: PackageTemplate
-    table_name: package_template
     summary: Specification for a class of packages, referenced by SKU and code.
-    detail: ./domain/package-template.yaml
+    detail: ./business-model/package-template.yaml
   - name: TaobaoSku
-    table_name: taobao_sku
     summary: Maps a Taobao SKU to a PackageTemplate + fulfillment behavior.
-    detail: ./domain/taobao-sku.yaml
+    detail: ./business-model/taobao-sku.yaml
 
 relationships:
   - from: Package
@@ -87,4 +79,4 @@ relationships:
     via: proxyTierId
     note: Which speed tier packages created from this template will use
 
-diagram: ./domain/er.svg
+diagram: ./business-model/er.svg

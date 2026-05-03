@@ -16,7 +16,7 @@ export function DataModelsView({ model, subView, onNavigate }: { model: Model; s
       {/* Data Model Relationship Diagram */}
       {(!subView || subView === 'entities-overview') && (
         <>
-          <h2 className="text-2xl font-bold text-slate-800">数据模型关系图</h2>
+          <h2 className="text-2xl font-bold text-slate-800">业务模型关系图</h2>
           <DataModelDiagram model={model} />
         </>
       )}

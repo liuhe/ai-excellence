@@ -8,17 +8,18 @@
 
 | 视图 | 回答 | 主要内容 |
 |------|------|---------|
-| **业务视图** | 谁？为谁创造什么价值？ | 业务执行者 / 业务用例 / 系统列表 / 系统用例 |
-| **领域模型视图** | 业务涉及哪些核心数据？ | 实体 / 字段 / 状态机 / 业务规则 / 实体关系 |
-| **系统逻辑视图** | 软件由哪些应用组成？怎么实现？ | 应用（子系统）/ 应用拓扑 / 子系统用例 / 页面 |
+| **业务视图** | 谁？为谁创造什么价值？业务里有哪些核心概念？ | 业务执行者 / 业务用例 / 系统列表 / 系统用例 / **业务模型**（业务实体，四色建模） |
+| **应用视图** | 软件由哪些应用组成？每个应用怎么实现？ | 应用（子系统）/ 应用拓扑 / 子系统用例 / 页面 / **应用领域模型**（DDD 构造块，每个 app 各一份，可选） |
 | **系统部署视图** | 怎么部署？怎么配置？ | 物理拓扑 / 节点 / 端口 / 安全 / 配置 |
+| ~~领域模型视图~~ | （**已废止**——业务实体下沉为业务视图的一部分；代码层结构变成各 app 的应用领域模型） | |
 
 ### 关键归属边界
 
 - **系统、系统用例归业务视图**——它们是业务流程分析的产出，不是系统实现
-- **领域模型独立成视图**——不在 system 段下（与 v6.2 早期 schema 的差异，schema 已对齐调整）
-- **系统逻辑视图的入口是"应用"**——业务视图说"系统提供什么能力"，系统逻辑视图说"应用怎么实现这些能力"
-- **页面归系统逻辑视图**——是前端应用的一部分，不独立成视图
+- **业务模型归业务视图**——业务实体（含 archetype 四色）是业务概念在"世界里"长什么样，跨 app 共用，不是某个 app 的代码结构
+- **应用领域模型归应用视图**——每个 app 内部用 DDD 构造块（Aggregate / VO / Repo / Service / Event）建模代码层结构；同一业务实体在不同 app 可有不同实现
+- **应用视图的入口是"应用"**——业务视图说"系统提供什么能力"，应用视图说"应用怎么实现这些能力"
+- **页面归应用视图**——是前端应用的一部分，不独立成视图
 
 ## 2. 三层用例结构
 
@@ -26,7 +27,7 @@
 |------|---------|------|---------|
 | **业务用例** | 业务视图 | 价值主张 | WHO gets WHAT value，关联系统用例 |
 | **系统用例** | 业务视图 | 系统对外能力 | 能力声明 + entry 入口，**无规则** |
-| **子系统用例** | 系统逻辑视图（应用内）| 实现逻辑 | 规则跟着负责的应用走，Include/Extend 链接 |
+| **子系统用例** | 应用视图（应用内）| 实现逻辑 | 规则跟着负责的应用走，Include/Extend 链接 |
 
 ### 追溯链路
 
@@ -43,23 +44,23 @@
 ### 原则
 
 - 每个视图都先给 **overview**（精简、全局、必读），再按需展开 **details**
-- Overview/Details 是相对的——每个层级都可再切（应用是系统逻辑视图 overview 的元素，但应用内部又有自己的 overview 和 details）
+- Overview/Details 是相对的——每个层级都可再切（应用是应用视图 overview 的元素，但应用内部又有自己的 overview 和 details）
 
 ### Overview 该放什么
 
 | 视图 | Overview |
 |------|---------|
 | 业务 | 全部内容（业务执行者 / 业务用例 / 系统 / 系统用例），结构小，不必拆 details |
-| 领域模型 | 实体清单（name + 一句简介）+ 完整 relationships |
-| 系统逻辑 | 应用清单（name + tech_stack 概要）+ application_topology |
+| 业务模型 | 实体清单（name + 一句简介）+ 完整 relationships |
+| 应用视图 | 应用清单（name + tech_stack 概要）+ application_topology |
 | 部署 | 物理节点 + 网络拓扑 |
 
 ### Details 该放什么
 
 视图内部按主题拆，对应 details 目录下的多个文件：
 
-- 领域模型 details：每个实体一个文件，含完整 fields / state_machine / rules / notes
-- 系统逻辑 details：每个应用一个文件，含完整 use_cases / pages / infrastructure
+- 业务模型 details：每个业务实体一个文件，含完整 fields / state_machine / rules / archetype / notes
+- 应用视图 details：每个应用一个文件，含完整 use_cases / pages / infrastructure / **可选 domain_model**（DDD 构造块）
 - 业务 details：可选——复杂业务流程时序、外部参与方约定等
 - 部署 details：可选——安全配置、扩缩容策略、灾备方案
 
@@ -71,13 +72,13 @@
 <project>/model/
 ├── business.yaml              # 业务视图 overview
 ├── business/                  # 业务视图 details（可选）
-├── domain.yaml                # 领域模型 overview
-├── domain/                    # 领域模型 details
-│   ├── <entity>.yaml          # 每个实体一个文件
+├── business-model.yaml        # 业务模型 overview（业务实体清单 + 关系，归属业务视图）
+├── business-model/            # 业务模型 details
+│   ├── <Entity>.yaml          # 每个业务实体一个文件（含 archetype 四色）
 │   └── er.svg                 # 关系图（diagram 字段引用）
-├── system-logic.yaml          # 系统逻辑 overview
-├── system-logic/              # 系统逻辑 details
-│   ├── <app>.yaml             # 每个应用一个文件
+├── applications.yaml          # 应用视图 overview
+├── applications/              # 应用视图 details
+│   ├── <app>.yaml             # 每个应用一个文件（含可选 domain_model 段：DDD 应用领域模型）
 │   └── application-topology.svg
 ├── deployment.yaml            # 部署 overview
 └── deployment/                # 部署 details
@@ -106,7 +107,8 @@
 | 业务用例 | `business_use_cases` 列表内 |
 | 系统用例 | 所在系统内 |
 | 子系统用例 | 所在应用内（跨应用可同名） |
-| 数据模型（实体） | 全局 |
+| 业务实体 | 业务模型内全局 |
+| 应用领域模型构造（Aggregate / VO / Repo / Service / Event） | 所在 app 内 |
 | 应用 | 全局 |
 | 系统 | 全局 |
 
@@ -135,9 +137,9 @@
 YAML 中通过 `diagram` 字段引用：
 
 ```yaml
-# domain.yaml
+# business-model.yaml
 relationships: [...]
-diagram: ./domain/er.svg
+diagram: ./business-model/er.svg
 ```
 
 Viewer 在该字段所在位置渲染 SVG。
@@ -152,9 +154,9 @@ Viewer 在该字段所在位置渲染 SVG。
 
 | 项目类型 | 推荐起点 | 然后展开 |
 |---------|---------|---------|
-| **需求驱动 / 探索型** | 业务视图（业务用例） | → 领域模型 → 系统逻辑 → 部署 |
-| **技术驱动 / 改造型** | 系统逻辑视图（应用拓扑） | → 业务视图回填 → 领域模型 → 部署 |
-| **数据中心型** | 领域模型视图 | → 业务视图 → 系统逻辑 → 部署 |
+| **需求驱动 / 探索型** | 业务视图（业务用例） | → 业务模型 → 应用视图（含应用领域模型） → 部署 |
+| **技术驱动 / 改造型** | 应用视图（应用拓扑） | → 业务视图回填（业务用例 + 业务模型）→ 应用领域模型 → 部署 |
+| **数据中心型** | 业务模型 | → 业务视图（业务用例）→ 应用视图（含应用领域模型）→ 部署 |
 
 无论从哪入手，**最终四个视图都要补齐**。Overview 是必须的，details 按需展开。
 
@@ -210,9 +212,97 @@ business:
 3. 长期存在的具体存在 → PPT（绿）
 4. 共享的属性集 / 配置规格 → Description（蓝）
 
-**用法**：在 entity detail YAML 顶层加 `archetype: <type>` 字段。可选——不写则 viewer 用中性灰。建议在系统的核心实体上标，让 ER 图一眼分清概念边界。
+**用法**：在 `business-model/<Entity>.yaml` 顶层加 `archetype: <type>` 字段。可选——不写则 viewer 用中性灰。建议在系统的核心业务实体上标，让 ER 图一眼分清概念边界。
 
-## 11. 模型 / 代码一致性（硬约束）
+> **注意**：archetype 只用在**业务模型**（业务视图下）。应用领域模型（应用视图，每个 app 内）用 DDD 构造块表达，不用四色——见下一节。
+
+### Role = 接口/契约 + implements 关系
+
+四色里的 **黄色 Role** 不是普通实体，本质是**接口**：定义"扮演这个角色需要满足什么"。其他实体（PPT / MI / Description）声明 `implements: [<RoleName>...]` 表示"我能扮演这些角色"。
+
+```yaml
+# business-model/Customer.yaml — 一个 Role 实体
+name: Customer
+archetype: role
+fields:
+  - canPlaceOrder: "Boolean (capability), 能否下单"
+
+# business-model/Person.yaml — 一个 PPT 实体，扮演 Customer 角色
+name: Person
+archetype: party-place-thing
+implements: [Customer, Employee]   # 同时是顾客和雇员
+fields:
+  - id: "..."
+```
+
+特点：
+- 一个 PPT 可同时扮演多个 Role（多重身份）
+- 一个 Role 可被多个 PPT 实现
+- 严格：implements 的目标必须是同 business-model 内 archetype=role 的实体
+- viewer 在 ER 图上用 UML realization 风格（虚线 + 空心三角箭头）渲染
+
+## 11. 应用领域模型（DDD 构造块，可选）
+
+写在 `applications/<app>.yaml` 的 `domain_model:` 段。每个 app 一份，不强制——简单 frontend / proxy / external 通常不需要；有内核逻辑的 backend / client 才填。
+
+### 与业务模型的关系
+
+| 层 | 文件位置 | 工具 | 受众 |
+|----|---------|------|------|
+| 业务模型 | `business-model/<Entity>.yaml` | 四色建模（archetype）| PO / 业务方 / 跨工程对齐 |
+| 应用领域模型 | `applications/<app>.yaml` 的 `domain_model:` | DDD 构造块 | 该 app 的开发者 |
+
+- 同一业务实体可在不同 app 有不同的 DDD 实现（vchat-relay 的 `Peer` 是简单路由表项；vchat-client 的 `Peer` 是富 Aggregate）
+- 也可以**不实现**——某 app 根本用不到某业务实体就不出现
+- 跨层映射用 `domain_model.aggregates[].business_entity: <BusinessEntityName>` 字段（接口/角色实现用单独的 `implements: [<RoleName>...]`）
+
+### DDD 构造块
+
+| 构造块 | 含义 | 例 |
+|--------|------|-----|
+| **Aggregate** | 根实体 + 内含实体 + VO + 事务边界 + 不变量 | `OrderAggregate` (root: Order, contains: OrderLine[], ShippingAddress) |
+| **Value Object** | 不可变，按值相等 | `Money`, `Address`, `RouteState` |
+| **Repository** | 对聚合的集合抽象 | `OrderRepository`（findById, save, findByCustomer 等） |
+| **Domain Service** | 不属单一聚合的领域逻辑 | `PriceCalculator`（涉及 Order + Customer + Product） |
+| **Domain Event** | 业务上有意义的状态变化通知 | `OrderShipped`（payload: orderId, trackingNo, shippedAt） |
+| **Role** | 接口/契约：定义参与者要满足的能力（DDD 没现成构造块对应；本方法论显式建模） | `MessageDecoder`（method: decode(bytes)）, `RouteSelector`（method: pickRoute(peers)） |
+
+### Role 与 implements 关系（应用领域层）
+
+应用层 Role 与业务模型 Role 概念一致——都是接口契约。区别在范围：
+
+- 业务模型 Role：跨 app 共享的业务能力契约（如 `Customer`、`Approver`）
+- 应用 Role：本 app 内的代码层契约（如 `MessageDecoder`、`RouteSelector`、`PaymentGateway`），可能因实现技术不同而抽象出来
+
+```yaml
+# applications/manager-server.yaml
+domain_model:
+  roles:
+    - name: PriceQuoter
+      methods: ["quote(orderItems) -> Money"]
+      notes: 给一组订单项报价；不同促销策略走不同实现
+  aggregates:
+    - name: OrderAggregate
+      business_entity: Order             # 跨层映射：本聚合实现哪个业务实体
+      implements: [PriceQuoter]          # 本 app 内本聚合扮演的角色（接口实现）
+      ...
+```
+
+注意：
+
+- `business_entity:` 是 **跨层映射**（应用层 → 业务层），不是接口实现
+- `implements:` 是 **本层接口实现**（本 app 内）
+- 二者**不同概念，不要混用**——例如 OrderAggregate 实现 Order 业务实体（`business_entity: Order`）的同时也扮演 PriceQuoter 角色（`implements: [PriceQuoter]`）
+
+### 判断"什么需要 DDD 建模"
+
+- **Aggregate**：有事务边界（一次操作改变多个东西，必须一起成功/失败）+ 有不变量（违反就是 bug）
+- **VO**：纯描述无身份（删了再造一个等价的，没人在乎）；常见错例：把 `Address` 当 Entity（错——地址没身份）
+- **Repository**：每个 Aggregate 一个 Repository（数据怎么存是 Repo 的事，业务逻辑不关心）
+- **Domain Service**：跨多个 Aggregate 的逻辑（不属于任何单个 Aggregate）
+- **Domain Event**：有业务方需要知道、可能触发其他流程的状态变化（不是普通日志）
+
+## 12. 模型 / 代码一致性（硬约束）
 
 > 这是 DCDDP 区别于"画图工具"的关键。模型不是装饰品，是 source of truth。
 
@@ -248,4 +338,5 @@ business:
 | 用例 Package 分组 | 2026-03-17 |
 | 4 视图 / Overview-Details 递归 / 多文件 / SVG / 命名空间 | 2026-04-26 |
 | 应用 type `client` / 网络 protocol `udp` / relation `composition` / 实体 archetype 4 色 | 2026-05-03 |
-| 模型 / 代码一致性硬约束（第 11 节） | 2026-05-03 |
+| 模型 / 代码一致性硬约束（第 12 节） | 2026-05-03 |
+| 业务模型 / 应用领域模型分层（第 11 节）+ 文件组织从 `domain/` → `business-model/` + 各 app 加 `domain_model` 段 | 2026-05-03 |

@@ -1,5 +1,4 @@
 name: UsageLog
-table_name: usage_log
 fields:
   - id: "Long, auto-increment primary key"
   - accountId: "Long, references Account"

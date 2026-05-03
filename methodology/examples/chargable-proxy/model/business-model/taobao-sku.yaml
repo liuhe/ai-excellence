@@ -1,5 +1,4 @@
 name: TaobaoSku
-table_name: taobao_sku
 fields:
   - id: "Long, auto-increment primary key"
   - skuId: "String, unique, Taobao SKU ID"

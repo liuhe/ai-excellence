@@ -1,6 +1,6 @@
-# System Logic — Overview
-# Detail per application: ./system-logic/<app>.yaml
-# Topology diagram: ./system-logic/application-topology.svg (TODO: generate)
+# Applications — Overview
+# Detail per application: ./applications/<app>.yaml
+# Topology diagram: ./applications/application-topology.svg (TODO: generate)
 
 applications:
   - name: manager-server
@@ -10,26 +10,26 @@ applications:
       frameworks: [Spring Boot, Spring Data JPA]
       storage: MySQL
     summary: Backend API for all management operations.
-    detail: ./system-logic/manager-server.yaml
+    detail: ./applications/manager-server.yaml
   - name: manager-ui
     type: frontend
     tech_stack:
       language: TypeScript
       frameworks: [React]
     summary: Frontend for admin and player self-service.
-    detail: ./system-logic/manager-ui.yaml
+    detail: ./applications/manager-ui.yaml
   - name: auth-proxy
     type: proxy
     tech_stack:
       language: Go
     summary: Authentication layer in front of Squid; validates credentials and reports usage.
-    detail: ./system-logic/auth-proxy.yaml
+    detail: ./applications/auth-proxy.yaml
   - name: squid
     type: external
     tech_stack:
       implementation: Squid HTTP proxy
     summary: Upstream HTTP proxy on overseas cloud (Tokyo/Hong Kong); not our code.
-    detail: ./system-logic/squid.yaml
+    detail: ./applications/squid.yaml
 
 application_topology:
   - from: Switch Console
@@ -72,4 +72,4 @@ application_topology:
     details:
       - AutoFulfillOrder
 
-diagram: ./system-logic/application-topology.svg
+diagram: ./applications/application-topology.svg

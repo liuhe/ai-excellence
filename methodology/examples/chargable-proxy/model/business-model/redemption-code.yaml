@@ -1,5 +1,4 @@
 name: RedemptionCode
-table_name: redemption_code
 fields:
   - id: "Long, auto-increment primary key"
   - code: "String, unique, the redemption code string"

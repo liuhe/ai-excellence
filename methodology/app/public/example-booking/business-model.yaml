@@ -1,33 +1,26 @@
 # 领域模型 — Overview
 entities:
   - name: Teacher
-    table_name: teacher
     summary: 教师信息 + 状态机（Active/Suspended）
-    detail: ./domain/Teacher.yaml
+    detail: ./business-model/Teacher.yaml
   - name: Student
-    table_name: student
     summary: 学生信息 + 余额
-    detail: ./domain/Student.yaml
+    detail: ./business-model/Student.yaml
   - name: Course
-    table_name: course
     summary: 课程信息 + 状态机（Draft/Published/Archived）
-    detail: ./domain/Course.yaml
+    detail: ./business-model/Course.yaml
   - name: TimeSlot
-    table_name: time_slot
     summary: 教师时间槽 + 状态机（Available/Booked/Completed/Cancelled）
-    detail: ./domain/TimeSlot.yaml
+    detail: ./business-model/TimeSlot.yaml
   - name: Booking
-    table_name: booking
     summary: 预约记录 + 状态机（Pending/Confirmed/InProgress/Completed/Cancelled/Refunded）
-    detail: ./domain/Booking.yaml
+    detail: ./business-model/Booking.yaml
   - name: Review
-    table_name: review
     summary: 学生对教师的评价
-    detail: ./domain/Review.yaml
+    detail: ./business-model/Review.yaml
   - name: Settlement
-    table_name: settlement
     summary: 教师月度结算单 + 状态机（Pending/Paid）
-    detail: ./domain/Settlement.yaml
+    detail: ./business-model/Settlement.yaml
 
 relationships:
   - from: Course
@@ -64,4 +57,4 @@ relationships:
     type: many-to-one
     via: teacherId
 
-diagram: ./domain/er.svg
+diagram: ./business-model/er.svg

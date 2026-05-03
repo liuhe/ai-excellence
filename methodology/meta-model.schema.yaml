@@ -22,13 +22,13 @@
 #   model/
 #   ├── business.yaml              # business view overview
 #   ├── business/                  # business view details (optional)
-#   ├── domain.yaml                # domain model overview
-#   ├── domain/                    # domain model details
-#   │   ├── <Entity>.yaml          # one file per entity
+#   ├── business-model.yaml        # business-level entities (was: domain.yaml)
+#   ├── business-model/            # entity details
+#   │   ├── <Entity>.yaml          # one file per business entity (含 archetype 四色)
 #   │   └── er.svg                 # ER diagram
-#   ├── system-logic.yaml          # system logic overview
-#   ├── system-logic/              # system logic details
-#   │   ├── <app-name>.yaml        # one file per application
+#   ├── applications.yaml          # applications view overview (apps + topology)
+#   ├── applications/              # applications view details
+#   │   ├── <app-name>.yaml        # one file per application; 含 domain_model 段（DDD）
 #   │   └── application-topology.svg
 #   ├── deployment.yaml            # deployment view overview
 #   └── deployment/                # deployment details
@@ -38,6 +38,11 @@
 # subdirectory) are optional and added as the model deepens.
 #
 # Naming convention: overview yaml `X.yaml` ↔ details directory `X/`.
+#
+# **业务模型 vs 应用领域模型**（关键概念区分，详见 SCHEMA NOTE 15）：
+#   - business-model.yaml: 业务概念在"世界里"长什么样，跨 app 共用，用四色建模标注 archetype
+#   - applications/<app>.yaml 的 domain_model 段: 该 app 的代码层结构如何实现这些业务概念，用 DDD 构造块（Aggregate / VO / Repo / Service / Event）
+#   - 同一业务实体在不同 app 里可能有不同的 DDD 实现（甚至有的 app 根本不实现）
 
 # =============================================================================
 # FILE 1: business.yaml — Business View
@@ -83,19 +88,19 @@ business_yaml_schema:
           interest: string
 
 # =============================================================================
-# FILE 2: domain.yaml — Domain Model Overview
+# FILE 2: business-model.yaml — Business-Level Entities (业务视图的一部分)
 # =============================================================================
 #
-# A scannable list of entities + the relationships between them. Each entity
-# has a one-line summary and a `detail` pointer to the detail file.
+# A scannable list of business entities + relationships. 业务概念在"世界里"长什么样，
+# 跨 app 共用。每个实体用四色建模标注 archetype。
+# 不描述代码实现（那是各 app 的 domain_model 段的事，见 FILE 5）。
 
-domain_yaml_schema:
+business_model_yaml_schema:
 
-  entities:                                  # one entry per entity
-    - name: string                          # PascalCase, globally unique
-      table_name: string                    # optional, snake_case
+  entities:                                  # one entry per business entity
+    - name: string                          # PascalCase, globally unique within business model
       summary: string                       # one-line description
-      detail: string                        # path to detail file, e.g., ./domain/Account.yaml
+      detail: string                        # path to detail file, e.g., ./business-model/Account.yaml
 
   relationships:                             # cross-entity associations
     - from: string                          # source entity name (the "whole" for composition)
@@ -105,20 +110,23 @@ domain_yaml_schema:
       via: string                           # optional, the field that holds the reference
       note: string                          # optional, non-obvious semantics
 
-  diagram: string                           # optional, path to SVG (e.g., ./domain/er.svg)
+  diagram: string                           # optional, path to SVG (e.g., ./business-model/er.svg)
 
 # =============================================================================
-# FILE 3: domain/<Entity>.yaml — Entity Detail
+# FILE 3: business-model/<Entity>.yaml — Business Entity Detail
 # =============================================================================
 #
-# Full specification for one entity: fields, state machine, rules, notes.
+# Full specification for one business entity: fields, state machine, rules, notes.
 
-entity_detail_yaml_schema:
+business_entity_detail_yaml_schema:
 
-  name: string                              # PascalCase, must match domain.yaml entry
-  table_name: string                        # optional
+  name: string                              # PascalCase, must match business-model.yaml entry
   archetype: moment-interval | role | party-place-thing | description
                                             # optional, 4-color modeling 类型；详见 SCHEMA NOTE 13
+
+  implements: string[]                       # optional, 本实体实现的 Role 名（业务模型内 archetype=role 的实体）
+                                            #   e.g., Person 实体 implements: [Customer, Employee]
+                                            #   仅 archetype=role 的实体可作为目标；详见 SCHEMA NOTE 16
 
   fields:                                    # required, compact format
     - field_name: "Type, description"       # e.g., id: "Long, auto-increment primary key"
@@ -142,13 +150,13 @@ entity_detail_yaml_schema:
       related_use_cases: string[]           # optional, format: <app-name>.<UseCaseName>
 
 # =============================================================================
-# FILE 4: system-logic.yaml — System Logic Overview
+# FILE 4: applications.yaml — Applications Overview
 # =============================================================================
 #
 # A scannable list of applications + their interaction topology. Each
 # application has a one-line summary and a `detail` pointer.
 
-system_logic_yaml_schema:
+applications_yaml_schema:
 
   applications:
     - name: string                          # kebab-case, globally unique
@@ -172,7 +180,7 @@ system_logic_yaml_schema:
   diagram: string                           # optional, path to SVG
 
 # =============================================================================
-# FILE 5: system-logic/<app-name>.yaml — Application Detail
+# FILE 5: applications/<app-name>.yaml — Application Detail
 # =============================================================================
 #
 # Full specification for one application: tech stack, infrastructure, use
@@ -180,7 +188,7 @@ system_logic_yaml_schema:
 
 application_detail_yaml_schema:
 
-  name: string                              # kebab-case, must match system-logic.yaml entry
+  name: string                              # kebab-case, must match applications.yaml entry
   type: frontend | client | backend | proxy | external
 
   tech_stack:                                # constrains AI's tech choices
@@ -215,6 +223,53 @@ application_detail_yaml_schema:
         - label: string
           url: string
       display_mappings: string[]            # optional, natural-language UI transformation rules
+
+  domain_model:                              # OPTIONAL — 该 app 的 DDD 应用领域模型（FILE 5 的可选段，详见 SCHEMA NOTE 15）
+                                            # 简单 frontend / proxy / external 类 app 通常不需要；有内核逻辑的 backend / client 才填
+    roles:                                  # optional — 应用层接口/角色定义（DDD 中显式建模"契约"）
+      - name: string                        # PascalCase, e.g., MessageDecoder
+        methods: string[]                   # 暴露的操作签名，e.g., ["decode(bytes) -> Message"]
+        notes: string                       # optional
+
+    aggregates:                              # 聚合：根实体 + 内含实体 + VO + 不变量
+      - name: string                        # PascalCase
+        business_entity: string             # optional — 跨层映射：实现的业务实体名（business-model 里的 entity）
+        implements: string[]                # optional — 本聚合实现的 Role（本 app 的 roles 之一）
+        root: string                        # 聚合根实体名
+        entities:                            # 聚合内的实体（除根之外）
+          - name: string                    # PascalCase
+            implements: string[]            # optional — 实体级实现的 Role
+            fields:
+              - field_name: "Type, description"
+        value_objects:                       # 聚合内的 VO
+          - name: string
+            implements: string[]            # optional — VO 级实现的 Role
+            fields:
+              - field_name: "Type, description"
+        invariants: string[]                # 聚合不变量（自然语言）
+        notes: string                       # optional
+
+    value_objects:                          # optional — 跨聚合共享的 VO
+      - name: string
+        implements: string[]                # optional — 实现的 Role
+        fields:
+          - field_name: "Type, description"
+
+    repositories:                            # optional — 仓储抽象
+      - name: string                        # 例如 AccountRepository
+        aggregate: string                   # 对应的聚合名
+        operations: string[]                # 例如 ["findById(id)", "save(account)", "findActive()"]
+
+    domain_services:                         # optional — 领域服务（不属于单一聚合的逻辑）
+      - name: string                        # 例如 PriceCalculator
+        operations: string[]
+        notes: string                       # optional
+
+    domain_events:                           # optional — 领域事件
+      - name: string                        # 例如 AccountActivated
+        published_when: string              # 何时发布
+        payload:                             # optional
+          - field_name: "Type, description"
 
 # =============================================================================
 # FILE 6: deployment.yaml — Deployment View
@@ -268,7 +323,7 @@ deployment_yaml_schema:
 #
 #    Business use cases  → business.yaml          → value propositions
 #    System use cases    → business.yaml          → thin glue, NO rules, has entry
-#    Application use cases → system-logic/<app>.yaml → implementation, rules, associations
+#    Application use cases → applications/<app>.yaml → implementation, rules, associations
 #
 #    Traceability: page → app use case → system use case → business use case.
 #    Pages do NOT directly reference business use cases.
@@ -292,8 +347,8 @@ deployment_yaml_schema:
 #
 #    Rules are free-form natural language. They serve as CONSTRAINTS on AI
 #    behavior, not executable specifications. Rules live in two places:
-#      - Entity rules (domain/<Entity>.yaml rules)
-#      - Application use case rules (system-logic/<app>.yaml use_cases[].rules)
+#      - Business entity rules (business-model/<Entity>.yaml rules)
+#      - Application use case rules (applications/<app>.yaml use_cases[].rules)
 #
 #    Both support cross-references for bidirectional traceability:
 #      - Entity rule.related_use_cases → app use case
@@ -304,7 +359,7 @@ deployment_yaml_schema:
 # 6. RELATIONSHIPS vs FIELD-LEVEL REFERENCES
 #
 #    Field-level references (e.g., "userId: Long, references User") give the
-#    implementation hint. The relationships section in domain.yaml gives the
+#    implementation hint. The relationships section in business-model.yaml gives the
 #    big-picture overview. Use the explicit relationships entry for cardinality,
 #    lifecycle coupling, or non-obvious associations.
 
@@ -407,7 +462,87 @@ deployment_yaml_schema:
 #
 #    Viewer：按 archetype 上色（粉 / 黄 / 绿 / 蓝）。无 archetype 字段则用中性灰，不强制。
 
-# 14. EXTENSIBILITY
+# 14. MARKDOWN IN TEXT FIELDS
+#
+#    若干文本字段（rule.content, entity notes, summary, application_topology.label 等）
+#    支持 markdown 渲染（viewer 内联呈现，链接可点击）。
+#
+#    **相对链接的路径约定**：相对路径以**包含该 markdown 文本的 YAML 文件所在目录**为基准。
+#    例如在 `applications/vchat-client.yaml` 的 rule.content 中写
+#    `[流程图](./vchat-client/flow.svg)`
+#    会被 viewer 解析为 `<model-root>/applications/vchat-client/flow.svg`（即把 svg 放在
+#    与 yaml 同级的 `vchat-client/` 子目录里）。
+#
+#    Viewer 实现：loadModel 在加载 detail YAML 时记录其 `_sourceDir`（注入到该实体/应用对象上），
+#    渲染 markdown 时用 _sourceDir 作为相对链接前缀。
+#
+#    支持的 markdown 元素：链接 `[label](url)`、行内代码 `` `code` ``、加粗 `**bold**`、
+#    斜体 `*italic*`、列表（`- item` / `1. item`）。块级 markdown（多段落）会被压成单段，
+#    所以适合短文本，不适合长 markdown 文档（长文档建议放独立 .md 文件用链接引用）。
+
+# 15. BUSINESS MODEL vs APPLICATION DOMAIN MODEL
+#
+#    DCDDP 区分两层模型，受众与建模工具不同：
+#
+#    业务模型（business-model.yaml + business-model/）：
+#      - 内容：业务概念在"世界里"长什么样（Account, Order, Peer, MediaFrame ...）
+#      - 受众：PO / 业务方 / 跨工程对齐
+#      - 建模工具：四色建模（archetype: MI / Role / PPT / Description）
+#      - 位置：业务视图下；跨 app 共用
+#      - 不写代码层细节：no table_name, no aggregate boundary, no repository
+#
+#    应用领域模型（applications/<app>.yaml 的 domain_model 段）：
+#      - 内容：本 app 的代码层结构如何实现业务概念（每个 app 一份）
+#      - 受众：该 app 的开发者
+#      - 建模工具：DDD 构造块
+#        * Aggregate（聚合）— 根实体 + 内含实体 + VO + 事务边界 + 不变量
+#        * Value Object（值对象）— 不可变，按值相等
+#        * Repository（仓储）— 对聚合的集合抽象
+#        * Domain Service（领域服务）— 不属单一聚合的领域逻辑
+#        * Domain Event（领域事件）— 业务上有意义的状态变化通知
+#      - 位置：应用视图下，挂在每个 app 上
+#      - 同一业务实体在不同 app 可有不同实现：
+#        * vchat-relay 的 Peer = 简单路由表项；
+#        * vchat-client 的 Peer = 富 Aggregate（含 RouteState VO + 看门狗 Service）
+#      - 也可以"不实现"——某 app 根本用不到某业务实体就不出现
+#
+#    跨层映射：domain_model.aggregates[].implements 字段指向业务实体名，
+#    让 viewer 可跨视图跳转、让 AI 推理时能关联两层。
+#
+#    判断准则：
+#      - 写一段东西在业务模型 vs 应用领域模型？看受众。给业务方/跨工程读 → 业务模型；给本 app 开发者
+#        理解代码结构 → 应用领域模型。
+#      - 概念名相同、但语义不同？两边都写，用 implements 字段连接。
+
+# 16. IMPLEMENTS — 角色与接口的"实现"关系（双层共用）
+#
+#    "实现"（implements）= UML 中的 realization：A 实现 B 的契约。两层都用：
+#
+#    业务模型层：
+#      - archetype=role 的实体本质是接口/契约（如 `Customer`, `Employee`, `MessageDecoder`）
+#      - 其他 archetype 的实体（PPT / MI / Description）可声明 `implements: [<RoleName>...]`
+#        e.g., Person 实体 implements: [Customer, Employee]
+#      - 一个 PPT 可同时扮演多个 Role（多重身份）；一个 Role 可被多个 PPT 实现
+#      - 严格：implements 的目标必须是同 business model 内 archetype=role 的实体
+#
+#    应用领域模型层：
+#      - app domain_model 可定义 `roles:` 段（DDD 中没有现成构造块对应"接口"，但常需显式建模契约）
+#        - 每个 role 含 name + methods（操作签名）
+#      - aggregate / aggregate.entities / aggregate.value_objects / 顶层 value_objects 都可声明
+#        `implements: [<RoleName>...]`，目标是本 app 的 roles
+#      - 跨 app 的接口实现：暂不支持；如需共享接口可在 business-model 用 archetype=role 表达
+#
+#    跨层映射（不要混淆）：
+#      - 业务模型中的 implements: [Role]            - 跨 PPT/MI/Desc 与 Role 的接口关系
+#      - 应用领域模型中的 implements: [Role]        - 跨 Aggregate/VO/Entity 与本 app Role 的接口关系
+#      - 应用领域模型中的 business_entity: <Entity> - 跨"应用层 → 业务层"的实现映射，**不是同义词**
+#        e.g., AccountAggregate 用 business_entity: Account 表示这个聚合实现的是哪个业务实体；
+#              AccountAggregate 用 implements: [BillingTarget] 表示该聚合在本 app 内扮演什么角色
+#
+#    Viewer：在 ER 图与领域模型图上用 UML realization 风格（虚线 + 空心三角箭头）渲染 implements 关系；
+#    Role 节点用区别于其他构造块的视觉样式。
+
+# 17. EXTENSIBILITY
 #
 #    Future sections (each as their own view file at the top level):
 #    - security.yaml: cross-cutting auth/authz

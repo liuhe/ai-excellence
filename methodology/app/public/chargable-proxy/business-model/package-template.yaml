@@ -1,5 +1,4 @@
 name: PackageTemplate
-table_name: package_template
 fields:
   - id: "Long, auto-increment primary key"
   - name: "String, display name for packages created from this template (e.g., 'DLC3 高速版 3GB/30d')"

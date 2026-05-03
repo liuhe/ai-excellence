@@ -16,7 +16,8 @@ export function DetailPanel({ model, selectedId, onNavigate }: Props) {
       return <BusinessView model={model} subView={undefined as any} onNavigate={onNavigate} />
     case 'business-ucs':
       return <BusinessView model={model} subView={'business-uc' as any} onNavigate={onNavigate} />
-    case 'data-models':
+    case 'business-model':
+    case 'data-models':  // legacy — 老的 hash URL 兼容
       return <DataModelsView model={model} subView={undefined as any} onNavigate={onNavigate} />
     case 'applications':
       return <ApplicationsView model={model} subView={undefined as any} onNavigate={onNavigate} />

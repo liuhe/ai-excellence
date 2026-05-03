@@ -6,28 +6,28 @@ applications:
       语言: TypeScript
       框架: [React, TailwindCSS, react-router-dom]
     summary: 学生端 Web 应用
-    detail: ./system-logic/student-app.yaml
+    detail: ./applications/student-app.yaml
   - name: teacher-app
     type: frontend
     tech_stack:
       语言: TypeScript
       框架: [React, TailwindCSS]
     summary: 教师端 Web 应用
-    detail: ./system-logic/teacher-app.yaml
+    detail: ./applications/teacher-app.yaml
   - name: admin-app
     type: frontend
     tech_stack:
       语言: TypeScript
       框架: [React, Ant Design]
     summary: 平台运营后台
-    detail: ./system-logic/admin-app.yaml
+    detail: ./applications/admin-app.yaml
   - name: course-server
     type: backend
     tech_stack:
       语言: Java
       框架: [Spring Boot, Spring Data JPA]
     summary: 业务后端，覆盖所有业务逻辑
-    detail: ./system-logic/course-server.yaml
+    detail: ./applications/course-server.yaml
 
 application_topology:
   - from: Student
@@ -61,4 +61,4 @@ application_topology:
     type: call
     details: [管理用户, 执行结算]
 
-diagram: ./system-logic/application-topology.svg
+diagram: ./applications/application-topology.svg

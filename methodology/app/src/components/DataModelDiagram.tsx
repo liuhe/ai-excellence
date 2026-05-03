@@ -13,6 +13,15 @@ export function DataModelDiagram({ model }: Props) {
 
   if (dataModels.length === 0) return null
 
+  // 优先用 YAML 的 diagram 字段指向的 AI 生成 SVG，无则 fallback dagre 自动布局
+  if (sys.businessModelDiagram) {
+    return (
+      <div className="border rounded bg-white p-4 mb-6 flex items-center justify-center">
+        <img src={sys.businessModelDiagram} alt="Business model ER diagram" className="max-w-full h-auto" />
+      </div>
+    )
+  }
+
   const g = new dagre.graphlib.Graph()
   g.setGraph({ rankdir: 'LR', ranksep: 80, nodesep: 40, marginx: 40, marginy: 40 })
   g.setDefaultEdgeLabel(() => ({}))

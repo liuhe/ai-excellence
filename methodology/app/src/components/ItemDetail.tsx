@@ -6,6 +6,7 @@ import { SystemUseCaseDiagram, AppUseCaseDiagram, SystemDetailDiagram, AppDetail
 import { Link } from './ModelLink'
 import { StateMachineDiagram } from './StateMachineDiagram'
 import { EntityRelDiagram } from './EntityRelDiagram'
+import { MD } from './MD'
 
 interface Props {
   model: Model
@@ -463,11 +464,15 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
       return (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-slate-800">▪ {n(dm, 'name', '名称')}</h2>
-          {(dm.table_name || dm.表名) && (
-            <span className="font-mono text-sm text-slate-400 bg-slate-100 px-2 py-1 rounded">
-              {n(dm, 'table_name', '表名')}
-            </span>
-          )}
+          <div className="flex gap-2 items-center flex-wrap">
+            {(dm.table_name || dm.表名) && (
+              <span className="font-mono text-sm text-slate-400 bg-slate-100 px-2 py-1 rounded">
+                {n(dm, 'table_name', '表名')}
+              </span>
+            )}
+            {dm.archetype && <Badge color={dm.archetype === 'role' ? 'amber' : dm.archetype === 'moment-interval' ? 'pink' : dm.archetype === 'party-place-thing' ? 'green' : 'blue'}>{dm.archetype}</Badge>}
+            {dm.implements && dm.implements.length > 0 && (<><span className="text-xs text-slate-500">扮演角色:</span>{dm.implements.map((r, j) => <Badge key={j} color="amber"><Link name={r} model={model} onNavigate={onNavigate} /></Badge>)}</>)}
+          </div>
           <Card>
             <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">字段</h3>
             <table className="w-full text-sm">
@@ -494,13 +499,13 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
           {notes && (
             <Card>
               <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">备注</h3>
-              <p className="text-slate-600 text-sm">{notes}</p>
+              <p className="text-slate-600 text-sm"><MD basePath={dm._sourceDir || model.basePath}>{notes}</MD></p>
             </Card>
           )}
           {(() => {
             const entityRules = (dm.rules || dm.规则 || [])
             // Reverse: find UC rules that reference this entity
-            const ucRulesForEntity: { appName: string; ucName: string; text: string; field?: string }[] = []
+            const ucRulesForEntity: { appName: string; ucName: string; text: string; field?: string; sourceDir?: string }[] = []
             for (const a of apps) {
               const aName = n(a, 'name', '名称')
               for (const uc of (a.use_cases || a.用例 || [])) {
@@ -513,6 +518,7 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
                       ucRulesForEntity.push({
                         appName: aName, ucName: n(uc, 'name', '名称'),
                         text: r.content || r.内容 || '', field: eField,
+                        sourceDir: a._sourceDir,
                       })
                     }
                   }
@@ -534,7 +540,7 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
                           <span className="text-slate-400 flex-shrink-0">•</span>
                           <div>
                             {field && <Badge color="blue">{field}</Badge>}{' '}
-                            <span>{text}</span>
+                            <MD basePath={dm._sourceDir || model.basePath}>{text}</MD>
                           </div>
                         </div>
                         {relUCs.length > 0 && (
@@ -554,7 +560,7 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
                         <span className="text-green-400 flex-shrink-0">•</span>
                         <div>
                           {r.field && <Badge color="blue">{r.field}</Badge>}{' '}
-                          <span>{r.text}</span>
+                          <MD basePath={r.sourceDir || model.basePath}>{r.text}</MD>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-1 ml-4 mt-1">
@@ -905,7 +911,7 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
             const ucName = n(uc, 'name', '名称')
             const fullKey = `${appName}.${ucName}`
             // Reverse: find entity rules that reference this UC
-            const entityRulesForUC: { entityName: string; text: string; field?: string }[] = []
+            const entityRulesForUC: { entityName: string; text: string; field?: string; sourceDir?: string }[] = []
             for (const dm of dataModels) {
               const eName = n(dm, 'name', '名称')
               for (const r of (dm.rules || dm.规则 || [])) {
@@ -915,6 +921,7 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
                     entityName: eName,
                     text: r.content || r.内容 || '',
                     field: r.field || r.关联属性,
+                    sourceDir: dm._sourceDir,
                   })
                 }
               }
@@ -932,7 +939,7 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
                       <li key={`own-${i}`} className="text-sm text-slate-600">
                         <div className="flex gap-2">
                           <span className="text-slate-400 flex-shrink-0">•</span>
-                          <span>{text}</span>
+                          <MD basePath={app._sourceDir || model.basePath}>{text}</MD>
                         </div>
                         {entities.length > 0 && (
                           <div className="flex flex-wrap gap-1 ml-4 mt-1">
@@ -950,7 +957,7 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
                         <span className="text-purple-400 flex-shrink-0">•</span>
                         <div>
                           {r.field && <Badge color="blue">{r.field}</Badge>}{' '}
-                          <span>{r.text}</span>
+                          <MD basePath={r.sourceDir || model.basePath}>{r.text}</MD>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-1 ml-4 mt-1">
@@ -1140,9 +1147,259 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
       )
     }
 
+    case 'app-domain': {
+      const app = apps[idx]
+      if (!app) return <Empty />
+      const dm = app.domain_model
+      if (!dm) return <Empty />
+      const aName = n(app, 'name', '名称')
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-slate-800">🧱 {aName} · 应用领域模型</h2>
+          <p className="text-sm text-slate-500">本 app 的 DDD 构造块（角色 / 聚合 / VO / 仓储 / 领域服务 / 领域事件）</p>
+          {dm.roles && dm.roles.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">角色 / 接口 ({dm.roles.length})</h3>
+              <ul className="space-y-1">
+                {dm.roles.map((r, j) => (
+                  <li key={j} className="flex items-center gap-2 text-sm">
+                    <span>🎭</span>
+                    <span className="font-medium text-slate-700">{r.name}</span>
+                    {r.methods && r.methods.length > 0 && <span className="text-xs text-slate-500">{r.methods.length} 个方法</span>}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+          {dm.aggregates && dm.aggregates.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">聚合 ({dm.aggregates.length})</h3>
+              <ul className="space-y-1">
+                {dm.aggregates.map((a, j) => (
+                  <li key={j} className="flex items-center gap-2 text-sm flex-wrap">
+                    <span>◆</span>
+                    <span className="font-medium text-slate-700">{a.name}</span>
+                    {a.business_entity && (<><span className="text-xs text-slate-400">→</span><Badge color="purple"><Link name={a.business_entity} model={model} onNavigate={onNavigate} /></Badge></>)}
+                    {a.implements && a.implements.length > 0 && (<><span className="text-xs text-slate-400">扮演:</span>{a.implements.map((roleName, k) => <Badge key={k} color="amber">{roleName}</Badge>)}</>)}
+                    {a.root && <span className="text-xs text-slate-500">根: {a.root}</span>}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+          {dm.value_objects && dm.value_objects.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">值对象 ({dm.value_objects.length})</h3>
+              <ul className="space-y-1">{dm.value_objects.map((v, j) => (<li key={j} className="flex items-center gap-2 text-sm"><span>◇</span><span className="font-medium text-slate-700">{v.name}</span></li>))}</ul>
+            </Card>
+          )}
+          {dm.repositories && dm.repositories.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">仓储 ({dm.repositories.length})</h3>
+              <ul className="space-y-1">{dm.repositories.map((r, j) => (<li key={j} className="flex items-center gap-2 text-sm"><span>🗄️</span><span className="font-medium text-slate-700">{r.name}</span>{r.aggregate && <span className="text-xs text-slate-500">→ {r.aggregate}</span>}</li>))}</ul>
+            </Card>
+          )}
+          {dm.domain_services && dm.domain_services.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">领域服务 ({dm.domain_services.length})</h3>
+              <ul className="space-y-1">{dm.domain_services.map((s, j) => (<li key={j} className="flex items-center gap-2 text-sm"><span>⚙</span><span className="font-medium text-slate-700">{s.name}</span></li>))}</ul>
+            </Card>
+          )}
+          {dm.domain_events && dm.domain_events.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">领域事件 ({dm.domain_events.length})</h3>
+              <ul className="space-y-1">{dm.domain_events.map((e, j) => (<li key={j} className="flex items-center gap-2 text-sm"><span>⚡</span><span className="font-medium text-slate-700">{e.name}</span>{e.published_when && <span className="text-xs text-slate-500">— {e.published_when}</span>}</li>))}</ul>
+            </Card>
+          )}
+        </div>
+      )
+    }
+
+    case 'app-agg': {
+      const app = apps[idx]
+      const agg = app?.domain_model?.aggregates?.[idx2]
+      if (!agg) return <Empty />
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-slate-800">◆ {agg.name}</h2>
+          <div className="flex gap-2 items-center flex-wrap">
+            <Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge>
+            <Badge color="gray">聚合（Aggregate）</Badge>
+            {agg.business_entity && (<><span className="text-xs text-slate-500">业务实体:</span><Badge color="purple"><Link name={agg.business_entity} model={model} onNavigate={onNavigate} /></Badge></>)}
+            {agg.implements && agg.implements.length > 0 && (<><span className="text-xs text-slate-500">扮演角色:</span>{agg.implements.map((r, j) => <Badge key={j} color="amber">{r}</Badge>)}</>)}
+          </div>
+          {agg.root && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-1">聚合根</h3>
+              <p className="text-slate-700">{agg.root}</p>
+            </Card>
+          )}
+          {agg.entities && agg.entities.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">内含实体（除根之外）</h3>
+              {agg.entities.map((e, j) => (
+                <div key={j} className="mb-3">
+                  <div className="font-semibold text-slate-700 text-sm">{e.name}</div>
+                  {e.fields && e.fields.length > 0 && <FieldsTable fields={e.fields} />}
+                </div>
+              ))}
+            </Card>
+          )}
+          {agg.value_objects && agg.value_objects.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">内含值对象</h3>
+              {agg.value_objects.map((v, j) => (
+                <div key={j} className="mb-3">
+                  <div className="font-semibold text-slate-700 text-sm">{v.name}</div>
+                  {v.fields && v.fields.length > 0 && <FieldsTable fields={v.fields} />}
+                </div>
+              ))}
+            </Card>
+          )}
+          {agg.invariants && agg.invariants.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">不变量</h3>
+              <ul className="space-y-1">{agg.invariants.map((inv, j) => (<li key={j} className="text-sm text-slate-600 flex gap-2"><span>•</span><MD basePath={app!._sourceDir || model.basePath}>{inv}</MD></li>))}</ul>
+            </Card>
+          )}
+          {agg.notes && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">备注</h3>
+              <p className="text-slate-600 text-sm"><MD basePath={app!._sourceDir || model.basePath}>{agg.notes}</MD></p>
+            </Card>
+          )}
+        </div>
+      )
+    }
+
+    case 'app-vo': {
+      const app = apps[idx]
+      const vo = app?.domain_model?.value_objects?.[idx2]
+      if (!vo) return <Empty />
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-slate-800">◇ {vo.name}</h2>
+          <div className="flex gap-2 items-center flex-wrap">
+            <Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge>
+            <Badge color="gray">值对象（Value Object）</Badge>
+            {vo.implements && vo.implements.length > 0 && (<><span className="text-xs text-slate-500">扮演角色:</span>{vo.implements.map((r, j) => <Badge key={j} color="amber">{r}</Badge>)}</>)}
+          </div>
+          {vo.fields && vo.fields.length > 0 && (<Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">字段</h3><FieldsTable fields={vo.fields} /></Card>)}
+        </div>
+      )
+    }
+
+    case 'app-role': {
+      const app = apps[idx]
+      const role = app?.domain_model?.roles?.[idx2]
+      if (!role) return <Empty />
+      // who implements this role within the app?
+      const implementers: { kind: string; name: string }[] = []
+      const dm = app?.domain_model
+      if (dm) {
+        for (const agg of (dm.aggregates || [])) {
+          if (agg.implements?.includes(role.name || '')) implementers.push({ kind: '聚合', name: agg.name || '' })
+          for (const e of (agg.entities || [])) if (e.implements?.includes(role.name || '')) implementers.push({ kind: '实体', name: `${agg.name}.${e.name}` })
+          for (const v of (agg.value_objects || [])) if (v.implements?.includes(role.name || '')) implementers.push({ kind: '聚合内 VO', name: `${agg.name}.${v.name}` })
+        }
+        for (const v of (dm.value_objects || [])) {
+          if (v.implements?.includes(role.name || '')) implementers.push({ kind: 'VO', name: v.name || '' })
+        }
+      }
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-slate-800">🎭 {role.name}</h2>
+          <div className="flex gap-2"><Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge><Badge color="amber">角色 / 接口</Badge></div>
+          {role.methods && role.methods.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">方法</h3>
+              <ul className="space-y-1">{role.methods.map((m, j) => (<li key={j} className="text-sm font-mono text-slate-700 flex gap-2"><span>•</span>{m}</li>))}</ul>
+            </Card>
+          )}
+          {role.notes && (<Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">备注</h3><p className="text-sm text-slate-600"><MD basePath={app!._sourceDir || model.basePath}>{role.notes}</MD></p></Card>)}
+          {implementers.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">本 app 内的实现者 ({implementers.length})</h3>
+              <ul className="space-y-1">{implementers.map((it, j) => (<li key={j} className="text-sm text-slate-700 flex gap-2"><span className="text-xs text-slate-400">{it.kind}:</span>{it.name}</li>))}</ul>
+            </Card>
+          )}
+        </div>
+      )
+    }
+
+    case 'app-repo': {
+      const app = apps[idx]
+      const repo = app?.domain_model?.repositories?.[idx2]
+      if (!repo) return <Empty />
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-slate-800">🗄️ {repo.name}</h2>
+          <div className="flex gap-2"><Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge><Badge color="gray">仓储（Repository）</Badge>{repo.aggregate && (<><span className="text-xs text-slate-500">聚合:</span><Badge color="purple">{repo.aggregate}</Badge></>)}</div>
+          {repo.operations && repo.operations.length > 0 && (
+            <Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">操作</h3>
+              <ul className="space-y-1">{repo.operations.map((op, j) => (<li key={j} className="text-sm font-mono text-slate-700 flex gap-2"><span>•</span>{op}</li>))}</ul>
+            </Card>
+          )}
+        </div>
+      )
+    }
+
+    case 'app-svc': {
+      const app = apps[idx]
+      const svc = app?.domain_model?.domain_services?.[idx2]
+      if (!svc) return <Empty />
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-slate-800">⚙ {svc.name}</h2>
+          <div className="flex gap-2"><Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge><Badge color="gray">领域服务（Domain Service）</Badge></div>
+          {svc.operations && svc.operations.length > 0 && (
+            <Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">操作</h3>
+              <ul className="space-y-1">{svc.operations.map((op, j) => (<li key={j} className="text-sm font-mono text-slate-700 flex gap-2"><span>•</span>{op}</li>))}</ul>
+            </Card>
+          )}
+          {svc.notes && (<Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">备注</h3><p className="text-sm text-slate-600"><MD basePath={app!._sourceDir || model.basePath}>{svc.notes}</MD></p></Card>)}
+        </div>
+      )
+    }
+
+    case 'app-evt': {
+      const app = apps[idx]
+      const evt = app?.domain_model?.domain_events?.[idx2]
+      if (!evt) return <Empty />
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-slate-800">⚡ {evt.name}</h2>
+          <div className="flex gap-2"><Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge><Badge color="gray">领域事件（Domain Event）</Badge></div>
+          {evt.published_when && (<Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-1">何时发布</h3><p className="text-sm text-slate-700">{evt.published_when}</p></Card>)}
+          {evt.payload && evt.payload.length > 0 && (<Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">载荷</h3><FieldsTable fields={evt.payload} /></Card>)}
+        </div>
+      )
+    }
+
     default:
       return <Empty />
   }
+}
+
+// 内部辅助组件
+function FieldsTable({ fields }: { fields: Record<string, string>[] }) {
+  return (
+    <table className="w-full text-sm">
+      <thead><tr className="text-left text-xs text-slate-400 uppercase border-b border-slate-100">
+        <th className="py-1 pr-4">字段名</th><th className="py-1">描述</th>
+      </tr></thead>
+      <tbody>
+        {fields.map((f, i) => {
+          const entry = Object.entries(f)[0]
+          if (!entry) return null
+          return (<tr key={i} className="border-b border-slate-50">
+            <td className="py-1.5 pr-4 font-mono text-xs text-blue-700 whitespace-nowrap">{entry[0]}</td>
+            <td className="py-1.5 text-slate-600">{entry[1]}</td>
+          </tr>)
+        })}
+      </tbody>
+    </table>
+  )
 }
 
 // --- Helper components ---

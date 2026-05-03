@@ -3,6 +3,7 @@
 export interface Model {
   business: Business;
   system: SystemView;
+  basePath?: string;       // viewer-injected: 模型根的 dev server 绝对路径，如 `/vchat-p2p-native/`，用于 markdown 相对链接解析
 }
 
 // === Business View ===
@@ -86,8 +87,9 @@ export interface StakeholderInterest {
 // === System View ===
 
 export interface SystemView {
-  data_models?: DataModel[];
+  data_models?: DataModel[];           // = 业务模型实体（business-model）；保留旧字段名避免 viewer 大改
   relationships?: Relationship[];
+  businessModelDiagram?: string;       // business-model.yaml 的 diagram 字段（业务模型 ER 图）
   overview?: OverviewEdge[];
   topologyDiagram?: string;
   applications?: Application[];
@@ -106,6 +108,8 @@ export interface DataModel {
   name?: string;
   table_name?: string;
   archetype?: Archetype;
+  implements?: string[];           // 本业务实体实现的 Role 名（跨实体接口关系，archetype=role 的实体作为目标）
+  _sourceDir?: string;            // viewer-injected: detail YAML 所在目录绝对路径，用于 markdown 相对链接解析
   fields?: Record<string, string>[];
   notes?: string;
   state_machine?: StateMachine;
@@ -179,10 +183,12 @@ export interface Infrastructure {
 export interface Application {
   name?: string;
   type?: 'frontend' | 'client' | 'backend' | 'proxy' | 'external';
+  _sourceDir?: string;             // viewer-injected: detail YAML 所在目录绝对路径，用于 markdown 相对链接解析
   tech_stack?: TechStack;
   infrastructure?: Infrastructure[];
   pages?: Page[];
   use_cases?: AppUseCase[];
+  domain_model?: AppDomainModel;   // 应用领域模型（DDD），可选
   docs?: Doc[];
   // Chinese
   名称?: string;
@@ -254,6 +260,58 @@ export interface Association {
   关系?: string;
   子系统?: string;
   名称?: string;
+}
+
+// === Application Domain Model (DDD) ===
+
+export interface AppAggregate {
+  name?: string;
+  business_entity?: string;        // 跨层映射：实现的业务实体名（business-model 中的 entity）
+  implements?: string[];           // 本聚合实现的 Role 名（本 app 的 roles）
+  root?: string;                   // 聚合根
+  entities?: { name?: string; implements?: string[]; fields?: Record<string, string>[] }[];
+  value_objects?: { name?: string; implements?: string[]; fields?: Record<string, string>[] }[];
+  invariants?: string[];
+  notes?: string;
+}
+
+export interface AppValueObject {
+  name?: string;
+  implements?: string[];
+  fields?: Record<string, string>[];
+}
+
+export interface AppRole {
+  name?: string;
+  methods?: string[];
+  notes?: string;
+}
+
+export interface AppRepository {
+  name?: string;
+  aggregate?: string;
+  operations?: string[];
+}
+
+export interface AppDomainService {
+  name?: string;
+  operations?: string[];
+  notes?: string;
+}
+
+export interface AppDomainEvent {
+  name?: string;
+  published_when?: string;
+  payload?: Record<string, string>[];
+}
+
+export interface AppDomainModel {
+  roles?: AppRole[];
+  aggregates?: AppAggregate[];
+  value_objects?: AppValueObject[];
+  repositories?: AppRepository[];
+  domain_services?: AppDomainService[];
+  domain_events?: AppDomainEvent[];
 }
 
 export interface Doc {

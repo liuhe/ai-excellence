@@ -8,6 +8,8 @@ const BADGE_COLORS: Record<string, string> = {
   amber: 'bg-amber-100 text-amber-700 border-amber-200',
   purple: 'bg-purple-100 text-purple-700 border-purple-200',
   red: 'bg-red-100 text-red-700 border-red-200',
+  pink: 'bg-pink-100 text-pink-700 border-pink-200',
+  teal: 'bg-teal-100 text-teal-700 border-teal-200',
   gray: 'bg-gray-100 text-gray-700 border-gray-200',
 }
 
