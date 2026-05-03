@@ -14,7 +14,7 @@ interface Props {
 }
 
 const APP_TYPE_COLORS: Record<string, string> = {
-  frontend: 'blue', backend: 'green', proxy: 'amber', external: 'purple',
+  frontend: 'blue', client: 'teal', backend: 'green', proxy: 'amber', external: 'purple',
 }
 
 export function ItemDetail({ model, selectedId, onNavigate }: Props) {

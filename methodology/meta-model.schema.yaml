@@ -98,9 +98,10 @@ domain_yaml_schema:
       detail: string                        # path to detail file, e.g., ./domain/Account.yaml
 
   relationships:                             # cross-entity associations
-    - from: string                          # source entity name
-      to: string                            # target entity name
+    - from: string                          # source entity name (the "whole" for composition)
+      to: string                            # target entity name (the "part" for composition)
       type: one-to-one | one-to-many | many-to-one | many-to-many
+      relation: association | composition   # optional, default association; see SCHEMA NOTE 13
       via: string                           # optional, the field that holds the reference
       note: string                          # optional, non-obvious semantics
 
@@ -116,6 +117,8 @@ entity_detail_yaml_schema:
 
   name: string                              # PascalCase, must match domain.yaml entry
   table_name: string                        # optional
+  archetype: moment-interval | role | party-place-thing | description
+                                            # optional, 4-color modeling 类型；详见 SCHEMA NOTE 13
 
   fields:                                    # required, compact format
     - field_name: "Type, description"       # e.g., id: "Long, auto-increment primary key"
@@ -149,7 +152,7 @@ system_logic_yaml_schema:
 
   applications:
     - name: string                          # kebab-case, globally unique
-      type: frontend | backend | proxy | external
+      type: frontend | client | backend | proxy | external
       tech_stack:                            # concise here; full version in detail file
         language: string
         frameworks: string[]                # optional
@@ -178,7 +181,7 @@ system_logic_yaml_schema:
 application_detail_yaml_schema:
 
   name: string                              # kebab-case, must match system-logic.yaml entry
-  type: frontend | backend | proxy | external
+  type: frontend | client | backend | proxy | external
 
   tech_stack:                                # constrains AI's tech choices
     language: string
@@ -196,7 +199,7 @@ application_detail_yaml_schema:
     - name: string                          # unique WITHIN this application (cross-app same name OK)
       package: string                       # optional, logical grouping
       actor: string
-      api: string[]                         # optional, API endpoints (backend only typically)
+      api: string[]                         # optional, API endpoints (backend / client / proxy that exposes endpoints)
       rules:                                 # optional, natural-language CONSTRAINTS
         - content: string
           related_entities: string[]        # optional, format: EntityName or EntityName.fieldName
@@ -205,7 +208,7 @@ application_detail_yaml_schema:
           application: string               # optional; omit if same app
           name: string                      # target use case name
 
-  pages:                                     # frontend only
+  pages:                                     # frontend / client (any app with UI)
     - name: string                          # PascalCase
       related_use_cases: string[]           # references use case names within this app
       external_links:                        # optional
@@ -232,7 +235,7 @@ deployment_yaml_schema:
     - from: string                          # node name
       to: string                            # node name
       port: integer
-      protocol: tcp | http | https
+      protocol: tcp | udp | http | https
 
   config:                                    # per-application configuration
     - application: string
@@ -342,7 +345,69 @@ deployment_yaml_schema:
 #    - Internal class/package structure (AI's freedom)
 #    - Logging, monitoring (modeled in deployment view if cross-cutting)
 
-# 11. EXTENSIBILITY
+# 11. APPLICATION TYPE — frontend vs client
+#
+#    Both are user-facing, but differ in how much logic they own:
+#      - frontend: thin UI dispatching to backend (browser SPA, mobile shell whose
+#        meaningful work happens on backend). Has `pages`, no `api`, no
+#        `infrastructure`.
+#      - client: "thick" client with embedded server-like work (media routing /
+#        codec / signaling / local services / P2P). Often runs as desktop /
+#        mobile / agent. May have `pages` (UI), `api` (exposed endpoints),
+#        `infrastructure` (embedded stack). Use when the client meaningfully
+#        runs without the backend or contains its own daemons.
+#
+#    The cut: if removing the backend leaves the user with anything useful, it's
+#    a client. If removing the backend leaves the user with nothing, it's a
+#    frontend.
+
+# 12. RELATION KIND — association vs composition
+#
+#    `relation` 描述结构关系性质，与 `type`（基数）正交：
+#      - association（默认）：两个独立实体之间的关联。各自有身份与生命周期，仅通过引用相连。
+#      - composition：from 整体包含 to 部件。to 没有独立身份，生命周期完全依赖 from——
+#        from 删除时 to 也消失。在实现上常表现为：to 是值类型 / 嵌入式 struct / 内联 JSON，
+#        没有独立存储表，没有独立 ID。
+#
+#    判断准则：如果 to 实体单独存在毫无意义、必须依附 from 才有价值 → composition；
+#    否则 → association。
+#
+#    示例：
+#      - User → Address（用户家庭地址作为内联字段）：composition
+#      - Order → User（订单关联下单用户）：association
+#      - DirectLink → ProxyConfig（代理配置嵌入在直连配置里）：composition
+#
+#    Viewer 渲染：composition 在 from 端绘制 UML 实心菱形；association 仅箭头。
+
+# 13. ENTITY ARCHETYPE — 四色建模（Peter Coad）
+#
+#    可选字段 `archetype`（写在 entity detail yaml 顶层），为实体打一个原型标签：
+#
+#      - moment-interval（粉色）：时刻 / 时段类，"什么发生了"。本质是事件、过程、交易、会话；
+#        有时间属性（at / start-end），常承载业务流程的关键状态机。
+#        例：Order, Payment, MediaFrame, ConnectionSession, MeetingInstance
+#
+#      - role（黄色）：参与角色，"在某情境下扮演什么"。把 PPT 接入 MI；本身不"独立存在"，
+#        总是依附于一个 PPT 在某 MI 中的角色。
+#        例：Customer, Teacher, ConferenceHost, RelayClient
+#
+#      - party-place-thing（绿色，简称 PPT）：参与方 / 地点 / 物，"持续存在的人物地物"。
+#        身份独立、生命周期长。
+#        例：Person, Node, Company, Vehicle, Building, Device
+#
+#      - description（蓝色）：描述 / 规范 / 分类，"可复用的属性集 / 配置 / 模板"。
+#        多个实例共享一份描述；常以"什么类型 / 什么级别 / 什么模板"出现。
+#        例：ProductType, ProxyConfig, RelayServerConfig, PackageTemplate, ChannelSpec
+#
+#    判断顺口溜（按优先级）：
+#      1) 有时间发生 → MI（粉）
+#      2) "X as Y in Z" 表达（X 是个角色，配合 PPT 与 MI）→ Role（黄）
+#      3) 长期存在的具体存在 → PPT（绿）
+#      4) 共享的属性集 / 配置规格 → Description（蓝）
+#
+#    Viewer：按 archetype 上色（粉 / 黄 / 绿 / 蓝）。无 archetype 字段则用中性灰，不强制。
+
+# 14. EXTENSIBILITY
 #
 #    Future sections (each as their own view file at the top level):
 #    - security.yaml: cross-cutting auth/authz

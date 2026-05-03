@@ -626,12 +626,21 @@ export function SystemDetailDiagram({ model, systemIndex }: { model: Model; syst
   )
 }
 
-// Architecture overview diagram — apps and actors with connections from 概览 data
+// Architecture overview diagram — uses YAML's `diagram` SVG override if provided,
+// otherwise auto-renders apps and actors with connections from 概览 data via dagre.
 export function ArchitectureDiagram({ model }: Props) {
   const sys = model.system
   const apps = (sys.applications || sys.子系统 || [])
   const overviewEdges = (sys.overview || sys.概览 || [])
   if (apps.length === 0) return null
+
+  if (sys.topologyDiagram) {
+    return (
+      <div className="border rounded bg-white p-4 mb-6 flex items-center justify-center">
+        <img src={sys.topologyDiagram} alt="Application topology" className="max-w-full h-auto" />
+      </div>
+    )
+  }
 
   const appNames = new Set(apps.map(a => n(a, 'name', '名称')))
 
@@ -644,18 +653,36 @@ export function ArchitectureDiagram({ model }: Props) {
   appNames.forEach(name => allNodes.add(name))
 
   const TYPE_COLORS: Record<string, string> = {
-    frontend: '#3b82f6', backend: '#10b981', proxy: '#f59e0b', external: '#8b5cf6',
+    frontend: '#3b82f6', client: '#14b8a6', backend: '#10b981', proxy: '#f59e0b', external: '#8b5cf6',
   }
   const appTypeMap = new Map<string, string>()
   apps.forEach(a => appTypeMap.set(n(a, 'name', '名称'), (a.type || a.类型 || 'backend') as string))
 
+  // Group edges by direction (so multiple parallel edges between same pair share one path
+  // with stacked labels). Self-loops handled separately as dagre lays them out poorly.
+  type EdgeItem = { label: string; type: string }
+  const directionalGroups = new Map<string, EdgeItem[]>()
+  const selfLoopsByNode = new Map<string, EdgeItem[]>()
+  overviewEdges.forEach(e => {
+    if (!e.from || !e.to) return
+    const item: EdgeItem = { label: e.label || '', type: e.type || 'call' }
+    if (e.from === e.to) {
+      if (!selfLoopsByNode.has(e.from)) selfLoopsByNode.set(e.from, [])
+      selfLoopsByNode.get(e.from)!.push(item)
+      return
+    }
+    const key = `${e.from}->${e.to}`
+    if (!directionalGroups.has(key)) directionalGroups.set(key, [])
+    directionalGroups.get(key)!.push(item)
+  })
+
   // --- Dagre layout ---
   const g = new dagre.graphlib.Graph()
-  g.setGraph({ rankdir: 'LR', ranksep: 120, nodesep: 60, marginx: 50, marginy: 50 })
+  g.setGraph({ rankdir: 'LR', ranksep: 200, nodesep: 80, marginx: 60, marginy: 60 })
   g.setDefaultEdgeLabel(() => ({}))
 
-  const appW = 160
-  const appH = 50
+  const appW = 180
+  const appH = 56
   const actorW = 100
   const actorH = 80
 
@@ -667,10 +694,10 @@ export function ArchitectureDiagram({ model }: Props) {
     }
   })
 
-  overviewEdges.forEach((e, i) => {
-    if (e.from && e.to) {
-      g.setEdge(e.from, e.to, { label: e.label || '', id: i, edgeType: e.type || 'call' })
-    }
+  directionalGroups.forEach((items, key) => {
+    const [from, to] = key.split('->')
+    const hasSync = items.some(it => it.type === 'sync')
+    g.setEdge(from, to, { items, primaryType: hasSync ? 'sync' : 'call' })
   })
 
   dagre.layout(g)
@@ -682,12 +709,27 @@ export function ArchitectureDiagram({ model }: Props) {
   })
 
   const graphInfo = g.graph()
+  // Reserve extra top space for self-loop arcs
+  const selfLoopSpaceTop = selfLoopsByNode.size > 0 ? 80 : 0
   const svgWidth = (graphInfo.width || 800) + 80
-  const svgHeight = (graphInfo.height || 400) + 80
+  const svgHeight = (graphInfo.height || 400) + 80 + selfLoopSpaceTop
+
+  // Wrap long Chinese labels — every ~16 chars (rough, treats each char equally)
+  const wrap = (text: string, maxChars = 16): string[] => {
+    if (!text) return []
+    if (text.length <= maxChars) return [text]
+    const lines: string[] = []
+    for (let i = 0; i < text.length; i += maxChars) lines.push(text.slice(i, i + maxChars))
+    return lines
+  }
+
+  const labelLineH = 12
+  const labelGap = 4
+  const labelChar = 6.5  // approx px per CJK char at fontSize 10
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 overflow-x-auto">
-      <svg width={svgWidth} height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+      <svg width={svgWidth} height={svgHeight} viewBox={`0 ${-selfLoopSpaceTop} ${svgWidth} ${svgHeight}`}
         className="mx-auto" style={{ minWidth: svgWidth }}>
         <defs>
           <marker id="arch-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
@@ -695,28 +737,95 @@ export function ArchitectureDiagram({ model }: Props) {
           </marker>
         </defs>
 
-        {/* Edges */}
+        {/* Edges (parallel edges in same direction share one path with stacked labels) */}
         {g.edges().map((e, i) => {
           const edgeData = g.edge(e)
           const points = edgeData?.points
           if (!points || points.length < 2) return null
+          const items = (edgeData?.items || []) as Array<{ label: string; type: string }>
           const pathParts = points.map((p: {x: number; y: number}, idx: number) =>
             idx === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`
           )
           const midPoint = points[Math.floor(points.length / 2)]
-          const isSync = edgeData?.edgeType === 'sync'
+          const isSync = edgeData?.primaryType === 'sync'
+
+          // Wrap each label and compute per-item block height
+          const wrappedItems = items.map(it => ({ ...it, lines: wrap(it.label) }))
+          const blockHeights = wrappedItems.map(w => w.lines.length * labelLineH)
+          const totalHeight = blockHeights.reduce((a, b) => a + b, 0) + Math.max(0, items.length - 1) * labelGap
+
+          // Stack item blocks above the edge midpoint, top-down
+          let yCursor = midPoint.y - 6 - totalHeight  // 6px gap above edge
+
           return (
             <g key={`edge-${i}`}>
               <path d={pathParts.join(' ')}
-                fill="none" stroke={isSync ? '#3b82f6' : '#94a3b8'} strokeWidth={1.2}
+                fill="none" stroke={isSync ? '#3b82f6' : '#94a3b8'} strokeWidth={1.4}
                 strokeDasharray={isSync ? 'none' : '6 3'}
                 markerEnd="url(#arch-arrow)" />
-              {edgeData?.label && (
-                <text x={midPoint.x} y={midPoint.y - 8} textAnchor="middle"
-                  fontSize={10} fill="#64748b" fontWeight={500}>
-                  {edgeData.label}
-                </text>
-              )}
+              {wrappedItems.map((item, k) => {
+                const blockY = yCursor
+                yCursor += blockHeights[k] + labelGap
+                const maxLineLen = Math.max(...item.lines.map(l => l.length))
+                const bgW = maxLineLen * labelChar + 8
+                const bgH = item.lines.length * labelLineH + 4
+                return (
+                  <g key={k}>
+                    <rect x={midPoint.x - bgW / 2} y={blockY - 2}
+                      width={bgW} height={bgH} rx={3} ry={3}
+                      fill="white" fillOpacity={0.9} />
+                    {item.lines.map((line, li) => (
+                      <text key={li} x={midPoint.x} y={blockY + (li + 1) * labelLineH - 2}
+                        textAnchor="middle" fontSize={10} fill="#475569" fontWeight={500}>
+                        {line}
+                      </text>
+                    ))}
+                  </g>
+                )
+              })}
+            </g>
+          )
+        })}
+
+        {/* Self-loops: arc above the node, with stacked labels */}
+        {Array.from(selfLoopsByNode.entries()).map(([nodeName, items]) => {
+          const pos = nodePos.get(nodeName)
+          if (!pos) return null
+          const arcRx = 36, arcRy = 28
+          const yTop = pos.y - pos.h / 2
+          const startX = pos.x - 30
+          const endX = pos.x + 30
+          const arcTopY = yTop - arcRy
+          const wrappedItems = items.map(it => ({ ...it, lines: wrap(it.label) }))
+          const blockHeights = wrappedItems.map(w => w.lines.length * labelLineH)
+          const totalH = blockHeights.reduce((a, b) => a + b, 0) + Math.max(0, items.length - 1) * labelGap
+          let yCursor = arcTopY - 6 - totalH
+
+          return (
+            <g key={`self-${nodeName}`}>
+              <path d={`M ${startX} ${yTop} A ${arcRx} ${arcRy} 0 0 1 ${endX} ${yTop}`}
+                fill="none" stroke="#94a3b8" strokeWidth={1.4} strokeDasharray="6 3"
+                markerEnd="url(#arch-arrow)" />
+              {wrappedItems.map((item, k) => {
+                const blockY = yCursor
+                yCursor += blockHeights[k] + labelGap
+                const maxLineLen = Math.max(...item.lines.map(l => l.length))
+                const bgW = maxLineLen * labelChar + 8
+                const bgH = item.lines.length * labelLineH + 4
+                return (
+                  <g key={k}>
+                    <rect x={pos.x - bgW / 2} y={blockY - 2}
+                      width={bgW} height={bgH} rx={3} ry={3}
+                      fill="white" fillOpacity={0.9} />
+                    {item.lines.map((line, li) => (
+                      <text key={li} x={pos.x} y={blockY + (li + 1) * labelLineH - 2}
+                        textAnchor="middle" fontSize={10} fill="#475569" fontWeight={500}>
+                        {line}
+                      </text>
+                    ))}
+                  </g>
+                )
+              })}
             </g>
           )
         })}

@@ -83,9 +83,10 @@ entities:                                                    # overview list —
     summary: <one-line description>
     detail: ./domain/<Entity>.yaml                          # path to the detail file
 relationships:
-  - from: <entity name>
-    to: <entity name>
+  - from: <entity name>                                     # the "whole" for composition
+    to: <entity name>                                       # the "part" for composition
     type: one-to-one | one-to-many | many-to-one | many-to-many
+    relation: association | composition                     # optional, default association; composition = `to` 是值类型/嵌入式部件，无独立身份与生命周期
     via: <field name>                                       # optional
     note: <string>                                          # optional
 diagram: ./domain/er.svg                                    # optional
@@ -96,6 +97,7 @@ diagram: ./domain/er.svg                                    # optional
 ```yaml
 name: <PascalCase>
 table_name: <snake_case>                                    # optional
+archetype: moment-interval | role | party-place-thing | description   # optional, 4-color modeling
 fields:
   - <fieldName>: "<Type>, <description>"
 notes: <string>                                             # optional
@@ -118,7 +120,7 @@ rules:                                                       # optional
 ```yaml
 applications:                                               # overview list
   - name: <kebab-case>
-    type: frontend | backend | proxy | external
+    type: frontend | client | backend | proxy | external
     tech_stack:
       language: <string>
       frameworks: [<string>, ...]                           # optional
@@ -137,7 +139,7 @@ diagram: ./system-logic/application-topology.svg            # optional
 
 ```yaml
 name: <kebab-case>
-type: frontend | backend | proxy | external
+type: frontend | client | backend | proxy | external
 tech_stack:
   language: <string>
   frameworks: [<string>, ...]
@@ -152,7 +154,7 @@ use_cases:
   - name: <UseCaseName>
     package: <string>                                       # optional
     actor: <string>
-    api: [<endpoint string>, ...]                           # optional, backend only
+    api: [<endpoint string>, ...]                           # optional, backend / client / proxy that exposes endpoints
     rules:                                                   # optional
       - content: <natural language rule>
         related_entities: [<EntityName>, <EntityName.field>, ...]   # optional
@@ -160,7 +162,7 @@ use_cases:
       - relation: Include | Extend
         application: <kebab-case>                           # optional, omit if same app
         name: <UseCaseName>
-pages:                                                       # frontend only
+pages:                                                       # frontend / client (any app with UI)
   - name: <PascalCase>
     related_use_cases: [<UseCaseName>, ...]
     external_links:                                          # optional
@@ -181,7 +183,7 @@ network:
   - from: <node>
     to: <node>
     port: <port>
-    protocol: tcp | http | https
+    protocol: tcp | udp | http | https
 config:                                                      # per-application configuration
   - application: <app-name>
     env: [<key=value>, ...]
@@ -315,7 +317,7 @@ Before finalizing, verify:
 - [ ] Every application use case can be traced back to a system use case and a business use case
 - [ ] Every data model is referenced by at least one application's use cases
 - [ ] Every application has a defined tech stack
-- [ ] Frontend applications have pages; backend applications have use cases
+- [ ] Frontend / client applications (any with UI) have pages; backend / client / proxy that exposes endpoints have use cases with `api`
 - [ ] Cross-namespace references use the `<namespace>.<name>` format consistently
 - [ ] Names are unique within their namespace; no within-namespace collisions
 - [ ] Rules capture all non-obvious business logic (obvious CRUD needs no rules)

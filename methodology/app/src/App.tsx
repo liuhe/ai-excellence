@@ -169,6 +169,9 @@ async function loadModel(modelName: string): Promise<Model> {
       data_models: entityDetails as Model['system']['data_models'],
       relationships: (domainOverview.relationships || []) as Model['system']['relationships'],
       overview: (systemLogicOverview.application_topology || []) as Model['system']['overview'],
+      topologyDiagram: systemLogicOverview.diagram
+        ? resolveDetailPath(base, systemLogicOverview.diagram as string)
+        : undefined,
       applications: appDetails as Model['system']['applications'],
     } as Model['system'],
   }

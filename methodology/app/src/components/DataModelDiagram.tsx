@@ -20,24 +20,44 @@ export function DataModelDiagram({ model }: Props) {
   const nodeW = 140
   const nodeH = 40
 
-  // Add entity nodes
+  // Add entity nodes (skip empty/null names — they confuse dagre)
+  const validNames = new Set<string>()
   dataModels.forEach(dm => {
     const name = n(dm, 'name', '名称')
+    if (!name) return
+    if (validNames.has(name)) return // dedup
+    validNames.add(name)
     g.setNode(name, { label: name, width: nodeW, height: nodeH })
   })
 
-  // Add relationship edges
+  // Add relationship edges (skip if endpoints not declared)
   relationships.forEach(r => {
-    const from = String(r.from)
-    const to = String(r.to)
+    const from = r.from ? String(r.from) : ''
+    const to = r.to ? String(r.to) : ''
+    if (!from || !to) return
     if (g.hasNode(from) && g.hasNode(to)) {
       const relType = String(r.type || '')
       const via = r.via ? String(r.via) : ''
-      g.setEdge(from, to, { label: relType, via })
+      const relation = (r.relation === 'composition') ? 'composition' : 'association'
+      g.setEdge(from, to, { label: relType, via, relation })
     }
   })
 
-  dagre.layout(g)
+  try {
+    dagre.layout(g)
+  } catch (err) {
+    console.error('[DataModelDiagram] dagre.layout failed', err, {
+      nodes: g.nodes(),
+      edges: g.edges(),
+      dataModelsLen: dataModels.length,
+      relationshipsLen: relationships.length,
+    })
+    return (
+      <div className="bg-amber-50 border border-amber-300 rounded p-4 text-sm text-amber-900">
+        数据模型图渲染失败：{err instanceof Error ? err.message : String(err)}（详情见控制台）
+      </div>
+    )
+  }
 
   // Extract positions
   const nodePos = new Map<string, { x: number; y: number; w: number; h: number }>()
@@ -50,7 +70,14 @@ export function DataModelDiagram({ model }: Props) {
   const svgWidth = (graphInfo.width || 600) + 60
   const svgHeight = (graphInfo.height || 400) + 60
 
-  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444']
+  // 4-color modeling palette (Peter Coad). Default = neutral slate when archetype absent.
+  const ARCHETYPE_COLORS: Record<string, string> = {
+    'moment-interval': '#ec4899',     // pink
+    'role': '#eab308',                // yellow
+    'party-place-thing': '#10b981',   // green
+    'description': '#3b82f6',         // blue
+  }
+  const NEUTRAL = '#94a3b8'
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 overflow-x-auto">
@@ -59,6 +86,10 @@ export function DataModelDiagram({ model }: Props) {
         <defs>
           <marker id="dm-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
             <polygon points="0 0, 8 3, 0 6" fill="#94a3b8" />
+          </marker>
+          {/* UML composition: filled diamond at the "whole" end (path's start) */}
+          <marker id="dm-diamond" markerWidth="14" markerHeight="10" refX="0" refY="5" orient="auto-start-reverse">
+            <polygon points="0,5 7,0 14,5 7,10" fill="#475569" />
           </marker>
         </defs>
 
@@ -71,11 +102,13 @@ export function DataModelDiagram({ model }: Props) {
             idx === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`
           )
           const midPoint = points[Math.floor(points.length / 2)]
+          const isComposition = edgeData?.relation === 'composition'
           return (
             <g key={`edge-${i}`}>
               <path d={pathParts.join(' ')}
                 fill="none" stroke="#94a3b8" strokeWidth={1.2}
-                markerEnd="url(#dm-arrow)" />
+                markerEnd="url(#dm-arrow)"
+                markerStart={isComposition ? 'url(#dm-diamond)' : undefined} />
               {edgeData?.label && (
                 <text x={midPoint.x} y={midPoint.y - 8} textAnchor="middle"
                   fontSize={9} fill="#64748b" fontWeight={500}>
@@ -92,14 +125,15 @@ export function DataModelDiagram({ model }: Props) {
           )
         })}
 
-        {/* Entity boxes */}
-        {dataModels.map((dm, i) => {
+        {/* Entity boxes — colored by 4-color archetype if provided, else neutral */}
+        {dataModels.map((dm) => {
           const name = n(dm, 'name', '名称')
           const pos = nodePos.get(name)
           if (!pos) return null
           const x = pos.x - pos.w / 2
           const y = pos.y - pos.h / 2
-          const color = colors[i % colors.length]
+          const archetype = (dm.archetype || '') as string
+          const color = ARCHETYPE_COLORS[archetype] || NEUTRAL
 
           return (
             <g key={name}>

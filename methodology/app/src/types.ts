@@ -89,6 +89,7 @@ export interface SystemView {
   data_models?: DataModel[];
   relationships?: Relationship[];
   overview?: OverviewEdge[];
+  topologyDiagram?: string;
   applications?: Application[];
   docs?: Doc[];
   // Chinese keys
@@ -99,9 +100,12 @@ export interface SystemView {
   扩展文档?: Doc[];
 }
 
+export type Archetype = 'moment-interval' | 'role' | 'party-place-thing' | 'description';
+
 export interface DataModel {
   name?: string;
   table_name?: string;
+  archetype?: Archetype;
   fields?: Record<string, string>[];
   notes?: string;
   state_machine?: StateMachine;
@@ -148,7 +152,8 @@ export interface Transition {
 export interface Relationship {
   from?: string;
   to?: string;
-  type?: string;
+  type?: string;                                    // cardinality: one-to-one | one-to-many | ...
+  relation?: 'association' | 'composition';         // structural; default: association
   via?: string;
   note?: string;
 }
@@ -173,7 +178,7 @@ export interface Infrastructure {
 
 export interface Application {
   name?: string;
-  type?: 'frontend' | 'backend' | 'proxy' | 'external';
+  type?: 'frontend' | 'client' | 'backend' | 'proxy' | 'external';
   tech_stack?: TechStack;
   infrastructure?: Infrastructure[];
   pages?: Page[];

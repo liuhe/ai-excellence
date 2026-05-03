@@ -6,8 +6,15 @@ methodology/app/node_modules/
 methodology/app/dist/
 .claude/settings.local.json
 
-# 运行时由 /model-view 在受管工程上注册的模型软链与 models.json 改动属于本机状态，不入 git
-methodology/app/public/*/
-!methodology/app/public/chargable-proxy/
-!methodology/app/public/example/
-!methodology/app/public/example-booking/
+# 运行时由 /model-view 在受管工程上注册的模型软链属于本机状态，不入 git。
+# 用 `*` 而非 `*/` 因为 `*/` 不匹配符号链接。
+methodology/app/public/*
+!methodology/app/public/chargable-proxy
+!methodology/app/public/example
+!methodology/app/public/example-booking
+!methodology/app/public/models.json
+!methodology/app/public/favicon.svg
+!methodology/app/public/icons.svg
+
+# models.json 的"committed 样板列表"需稳定；本地 /model-view 注册的额外项请勿提交
+# （先 git checkout methodology/app/public/models.json 还原再 commit）

@@ -7,6 +7,7 @@ type SubView = 'apps-list' | 'apps-detail' | 'tech-stack'
 
 const TYPE_COLORS: Record<string, string> = {
   frontend: 'blue',
+  client: 'teal',
   backend: 'green',
   proxy: 'amber',
   external: 'purple',
