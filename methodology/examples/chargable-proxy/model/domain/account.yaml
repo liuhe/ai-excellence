@@ -1,0 +1,27 @@
+name: Account
+table_name: account
+fields:
+  - id: "Long, auto-increment primary key"
+  - username: "String, unique, used as HTTP proxy username"
+  - password: "String, used as HTTP proxy password"
+  - status: "AccountStatus(Active/Disabled), account state"
+  - createdAt: "LocalDateTime, creation time"
+  - updatedAt: "LocalDateTime, last update time"
+notes: >
+  Each account represents one proxy user.
+  Created either manually by admin or automatically when a Taobao order is fulfilled.
+state_machine:
+  field: status
+  states: [Active, Disabled]
+  transitions:
+    - from: Active
+      to: Disabled
+      trigger: Admin manually disables (e.g., abuse, refund)
+    - from: Disabled
+      to: Active
+      trigger: Admin re-enables
+rules:
+  - content: Username must be unique across all accounts
+    field: username
+  - content: Password should be generated randomly with sufficient entropy (at least 12 characters)
+    field: password

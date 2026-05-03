@@ -1,0 +1,47 @@
+name: TaobaoOrder
+table_name: taobao_order
+fields:
+  - id: "Long, auto-increment primary key"
+  - taobaoTradeId: "String, unique, Taobao trade ID (tid)"
+  - taobaoOrderId: "String, Taobao sub-order ID (oid), nullable for single-item orders"
+  - skuId: "String, Taobao SKU ID"
+  - buyerNick: "String, buyer's Taobao nickname"
+  - accountId: "Long, references Account, nullable until fulfilled"
+  - redemptionCodeId: "Long, references RedemptionCode, nullable"
+  - status: "TaobaoOrderStatus(Received/Fulfilled/DeliveryFailed/Refunded), order processing state"
+  - paidAt: "LocalDateTime, when the buyer paid"
+  - fulfilledAt: "LocalDateTime, when auto-fulfillment completed, nullable"
+  - failReason: "String, reason for delivery failure, nullable"
+  - retryCount: "Integer, number of delivery retries, default 0"
+  - createdAt: "LocalDateTime, creation time"
+notes: >
+  Tracks each Taobao trade and its mapping to local account/package.
+  Used for reconciliation, refund handling, and troubleshooting.
+state_machine:
+  field: status
+  states: [Received, Fulfilled, DeliveryFailed, Refunded]
+  transitions:
+    - from: Received
+      to: Fulfilled
+      trigger: Account + package created and credentials delivered to buyer via Taobao API
+    - from: Received
+      to: DeliveryFailed
+      trigger: Taobao delivery API call failed (will retry)
+    - from: DeliveryFailed
+      to: Fulfilled
+      trigger: Retry succeeds
+    - from: DeliveryFailed
+      to: DeliveryFailed
+      trigger: Retry fails again (increment retryCount)
+    - from: Fulfilled
+      to: Refunded
+      trigger: Taobao refund notification received; account and package disabled
+rules:
+  - content: Processing must be idempotent — receiving the same taobaoTradeId multiple times must not create duplicate accounts
+    field: taobaoTradeId
+    related_use_cases:
+      - manager-server.ReceiveTradeNotification
+  - content: When retryCount exceeds 3, stop retrying and alert admin
+    field: retryCount
+    related_use_cases:
+      - manager-server.AutoFulfillOrder

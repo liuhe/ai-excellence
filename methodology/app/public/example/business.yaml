@@ -1,0 +1,57 @@
+# 业务视图 — Overview
+组织: Download Accelerator Vendor
+业务工人: [Admin]
+外部参与方:
+  - 名称: Switch 游戏玩家
+    参与者:
+      - 名称: Switch Game Player
+        类型: 人
+      - 名称: Switch Game Console
+        类型: 设备
+  - 名称: External E-Commerce Platform
+    类型: 系统
+    用例:
+      - 名称: 上架
+        执行者: Admin
+      - 名称: 购买
+        执行者: Switch Game Player
+系统:
+  - 名称: Proxy System
+    用例:
+      - 名称: 创建账户
+        执行者: Admin
+        入口: manager-ui.创建账户
+      - 名称: 创建套餐
+        执行者: Admin
+        入口: manager-ui.创建套餐
+      - 名称: 查询账户详情
+        执行者: Switch Game Player
+        入口: manager-ui.查询账户详情
+      - 名称: 绑定套餐
+        执行者: Switch Game Player
+        入口: manager-ui.绑定套餐
+      - 名称: 代理HTTP请求
+        执行者: Switch Game Console
+        入口: proxy.Do Proxy
+业务用例:
+  - 名称: 给游戏下载提速
+    执行者: Switch Game Player
+    相关方利益:
+      - 相关方: Switch Game Player
+        利益: 快速下载游戏，减少等待时间，体验流畅
+      - 相关方: Download Accelerator Vendor
+        利益: 用户持续付费使用，业务可持续
+    系统用例:
+      - 查询账户详情
+      - 绑定套餐
+      - 代理HTTP请求
+  - 名称: 运营代理服务
+    执行者: Admin
+    相关方利益:
+      - 相关方: Download Accelerator Vendor
+        利益: 通过售卖流量套餐获取收入，套餐用量可追踪可计费
+      - 相关方: Admin
+        利益: 低运营成本管理账户和套餐，批量操作高效
+    系统用例:
+      - 创建账户
+      - 创建套餐

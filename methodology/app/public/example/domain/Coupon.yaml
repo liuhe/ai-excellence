@@ -1,0 +1,16 @@
+名称: Coupon
+表名: proxy_coupon
+字段:
+  - id: Integer, 主键自增
+  - code: String, 兑换码
+  - domain: String, 代理域名，格式为 host:port
+  - type: String, 套餐类型
+  - quota: long, 流量配额(字节)
+  - effectiveDays: int, 有效天数
+  - boundUsername: String, 已绑定的用户名
+  - boundTime: long, 绑定时间
+备注: Coupon兑换后会创建对应的Package
+规则:
+  - 内容: 兑换码格式XXXX-XXXX-XXXX-XXXX，字符集排除易混淆字符(I/O/0/1)
+    关联属性: code
+    关联用例: [manager-server.创建套餐]

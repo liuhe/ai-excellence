@@ -1,0 +1,28 @@
+名称: admin-app
+类型: frontend
+技术栈:
+  语言: TypeScript
+  框架: [React, Ant Design]
+页面:
+  - 名称: UserManagePage
+    关联用例: [管理用户]
+    显示映射:
+      - 学生/教师分Tab管理
+      - 支持搜索、封禁/解封操作
+  - 名称: SettlementManagePage
+    关联用例: [执行结算]
+    显示映射:
+      - 按月批量生成结算单，支持逐条确认打款
+用例:
+  - 名称: 管理用户
+    执行者: 平台运营
+    关联:
+      - 关系: Include
+        子系统: course-server
+        名称: 管理用户
+  - 名称: 执行结算
+    执行者: 平台运营
+    关联:
+      - 关系: Include
+        子系统: course-server
+        名称: 执行结算

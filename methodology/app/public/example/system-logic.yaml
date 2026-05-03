@@ -1,0 +1,67 @@
+# 系统逻辑 — Overview
+applications:
+  - name: manager-ui
+    type: frontend
+    tech_stack:
+      语言: TypeScript
+      框架: [React, react-router-dom]
+    summary: 管理端 + 用户自助前端
+    detail: ./system-logic/manager-ui.yaml
+  - name: manager-server
+    type: backend
+    tech_stack:
+      语言: Java
+      框架: [Spring Boot, Spring Data JPA]
+    summary: 业务后端，账户/套餐/请求数据管理
+    detail: ./system-logic/manager-server.yaml
+  - name: proxy
+    type: proxy
+    tech_stack:
+      语言: Go
+    summary: 鉴权代理，前置 http-proxy
+    detail: ./system-logic/proxy.yaml
+  - name: http-proxy
+    type: external
+    tech_stack:
+      实现: 任意HTTP代理应用
+    summary: 上游通用 HTTP 代理
+    detail: ./system-logic/http-proxy.yaml
+
+application_topology:
+  - from: Switch Game Player
+    to: manager-ui
+    label: 查询账户、绑定套餐
+    type: call
+    details: [查询账户详情, 绑定套餐]
+  - from: Admin
+    to: manager-ui
+    label: 创建账户、创建套餐
+    type: call
+    details: [创建账户, 创建套餐]
+  - from: manager-ui
+    to: manager-server
+    label: REST API 调用
+    type: call
+    details: [查询账户详情, 创建账户, 创建套餐, 绑定套餐]
+  - from: manager-server
+    to: proxy
+    label: 提供用户可用套餐数据
+    type: sync
+    details: [Get Available Packages]
+  - from: proxy
+    to: manager-server
+    label: 同步请求用量
+    type: call
+    details: [Sync Usage]
+  - from: Switch Game Console
+    to: proxy
+    label: HTTP/HTTPS 代理请求
+    type: call
+    details: [Do Proxy]
+  - from: proxy
+    to: http-proxy
+    label: 转发代理请求
+    type: call
+    details: [Proxy HTTP Request]
+
+diagram: ./system-logic/application-topology.svg

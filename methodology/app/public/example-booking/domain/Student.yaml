@@ -1,0 +1,11 @@
+名称: Student
+表名: student
+字段:
+  - id: Long, 主键自增
+  - name: String, 学生姓名
+  - avatar: String, 头像URL
+  - balance: Long, 账户余额(分)
+规则:
+  - 内容: 余额通过充值增加，预约课程时扣减，取消预约时退回
+    关联属性: balance
+    关联用例: [course-server.创建预约, course-server.取消预约]

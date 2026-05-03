@@ -1,0 +1,25 @@
+名称: Teacher
+表名: teacher
+字段:
+  - id: Long, 主键自增
+  - name: String, 教师姓名
+  - avatar: String, 头像URL
+  - bio: String, 个人简介
+  - subjects: String, 授课科目(以逗号分隔，如 数学,物理)
+  - rating: "Double, 综合评分(1.0~5.0)，由学生评价自动计算"
+  - totalLessons: Integer, 累计授课次数
+  - status: TeacherStatus(Active/Suspended)
+规则:
+  - 内容: rating由所有已完成课程的学生评分加权平均计算，每次新增评价后更新
+    关联属性: rating
+    关联用例: [course-server.提交评价]
+状态机:
+  字段: status
+  状态: [Active, Suspended]
+  转换:
+    - from: Active
+      to: Suspended
+      trigger: 平台运营手动封禁或差评率超过阈值
+    - from: Suspended
+      to: Active
+      trigger: 平台运营手动解封

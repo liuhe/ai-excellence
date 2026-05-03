@@ -1,0 +1,13 @@
+名称: Account
+表名: proxy_user
+字段:
+  - id: Long, 主键自增
+  - username: String, 唯一
+  - password: String
+规则:
+  - 内容: username必须全局唯一
+    关联属性: username
+    关联用例: [manager-server.创建账户]
+  - 内容: 密码为8位随机数字，创建时自动生成
+    关联属性: password
+    关联用例: [manager-server.创建账户]

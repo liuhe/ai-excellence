@@ -1,0 +1,28 @@
+名称: Package
+表名: proxy_package
+字段:
+  - id: Long, 主键自增
+  - username: String, 关联Account
+  - domain: String, 代理域名，格式为 host:port（如 hs01.example.com:80）。同一主机可通过不同端口运行多个proxy实例，提供不同速度级别的代理服务
+  - type: String, 套餐类型(如nintendo, freedom)
+  - quota: long, 流量配额(字节)
+  - effectiveDays: int, 有效天数
+  - usedQuota: long, 已使用配额(字节)
+  - status: PackageStatus(Pending/Active/Expired/Exhausted)
+  - activateTime: long, 激活时间
+  - expireTime: long, 过期时间
+备注: Expired状态不会真正更新到数据库，而是在查询时根据activateTime和effectiveDays以及当前时间计算出来的
+状态机:
+  字段: status
+  状态: [Pending, Active, Expired, Exhausted]
+  转换:
+    - from: Pending
+      to: Active
+      trigger: 首次扣减流量时自动激活
+    - from: Active
+      to: Exhausted
+      trigger: usedQuota >= quota
+    - from: Active
+      to: Expired
+      trigger: 当前时间超过 activateTime + effectiveDays（查询时计算）
+  备注: Expired 是查询时计算的虚拟状态，不持久化到数据库

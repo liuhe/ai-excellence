@@ -1,0 +1,87 @@
+名称: course-server
+类型: backend
+技术栈:
+  语言: Java
+  框架:
+    - Spring Boot
+    - Spring Data JPA
+基础设施:
+  - 名称: MySQL
+    类型: database
+    描述: 主库，存储所有业务数据
+  - 名称: Redis
+    类型: cache
+    描述: 会话管理 + 热门课程/教师列表缓存，减少DB查询
+用例:
+  - 名称: 浏览课程
+    执行者: Student
+    api路径: ["/api/courses", "/api/courses/{id}", "/api/teachers/{id}"]
+    规则:
+      - 支持按科目(subject)、价格区间、教师评分排序
+      - 只返回Published状态的课程
+      - 课程列表走Redis缓存，5分钟TTL
+  - 名称: 创建预约
+    执行者: Student
+    api路径: [/api/student/bookings]
+    规则:
+      - 内容: 校验时间槽状态为Available，校验学生余额充足
+        关联实体: [TimeSlot.status, Student.balance]
+      - 内容: 扣减学生余额，将时间槽状态改为Booked，创建Confirmed状态的Booking
+        关联实体: [Student.balance, TimeSlot.status, Booking.status]
+      - 同一学生同一时间段不能有多个Confirmed/InProgress的预约
+  - 名称: 取消预约
+    执行者: Student
+    api路径: ["/api/student/bookings/{id}/cancel"]
+    规则:
+      - 只有Confirmed状态的预约可以取消
+      - 内容: 开课前24小时以上取消全额退回余额，24小时内取消不退款
+        关联实体: [Booking.status, Student.balance]
+      - 取消后将TimeSlot状态恢复为Available
+  - 名称: 获取课堂信息
+    执行者: Student
+    api路径: ["/api/student/classroom/{bookingId}"]
+    规则:
+      - 只有InProgress状态的Booking才能进入课堂
+      - 返回教师信息、课程信息、剩余时间
+  - 名称: 提交评价
+    执行者: Student
+    api路径: [/api/student/reviews]
+    规则:
+      - 内容: 只有Completed状态的Booking可以评价，每个Booking仅限一次
+        关联实体: [Booking.status, Review.bookingId]
+      - 内容: 评价提交后自动重新计算教师的综合评分
+        关联实体: [Teacher.rating]
+  - 名称: 创建课程
+    执行者: Teacher
+    api路径: [/api/teacher/courses]
+    规则:
+      - 新课程初始状态为Draft，教师确认后变为Published
+      - 课时时长限制30~120分钟，价格最低1元
+  - 名称: 管理时间槽
+    执行者: Teacher
+    api路径: ["/api/teacher/timeslots", "/api/teacher/timeslots/{id}"]
+    规则:
+      - 内容: 新建时间槽时校验与已有时间槽不重叠
+        关联实体: [TimeSlot]
+      - 时间槽最短30分钟，最长240分钟
+      - 只能创建24小时后的时间槽
+      - 已被预约(Booked)的时间槽不可删除
+  - 名称: 查看结算
+    执行者: Teacher
+    api路径: [/api/teacher/settlements]
+    规则:
+      - 返回教师自己的结算列表，按月降序
+  - 名称: 管理用户
+    执行者: 平台运营
+    api路径: [/api/admin/teachers, /api/admin/students]
+    规则:
+      - 支持按姓名搜索
+      - 可封禁/解封教师（修改Teacher.status）
+      - 封禁教师时自动取消其所有未来的Available时间槽
+  - 名称: 执行结算
+    执行者: 平台运营
+    api路径: ["/api/admin/settlements/generate", "/api/admin/settlements/{id}/pay"]
+    规则:
+      - 内容: 按月汇总教师已完成课程的收入，平台抽佣20%，生成Pending状态结算单
+        关联实体: [Settlement.commission, Settlement.netAmount]
+      - 确认打款后将结算单状态改为Paid

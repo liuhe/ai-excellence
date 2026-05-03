@@ -1,0 +1,27 @@
+名称: TimeSlot
+表名: time_slot
+字段:
+  - id: Long, 主键自增
+  - teacherId: Long, 关联Teacher
+  - startTime: Long, 开始时间(epoch millis)
+  - endTime: Long, 结束时间(epoch millis)
+  - status: SlotStatus(Available/Booked/Completed/Cancelled)
+规则:
+  - 内容: 同一教师的时间槽不允许重叠
+    关联用例: [course-server.管理时间槽]
+状态机:
+  字段: status
+  状态: [Available, Booked, Completed, Cancelled]
+  转换:
+    - from: Available
+      to: Booked
+      trigger: 学生成功预约
+    - from: Available
+      to: Cancelled
+      trigger: 教师取消该时间槽
+    - from: Booked
+      to: Completed
+      trigger: 课程结束时间到达后自动标记
+    - from: Booked
+      to: Cancelled
+      trigger: 学生或教师取消预约（开课前24小时以上）

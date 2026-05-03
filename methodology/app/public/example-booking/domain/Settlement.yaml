@@ -1,0 +1,17 @@
+名称: Settlement
+表名: settlement
+字段:
+  - id: Long, 主键自增
+  - teacherId: Long, 关联Teacher
+  - period: String, 结算周期(如 2026-03)
+  - totalAmount: Long, 总金额(分)
+  - commission: Long, 平台佣金(分)
+  - netAmount: Long, 教师实收(分)
+  - status: SettlementStatus(Pending/Paid)
+状态机:
+  字段: status
+  状态: [Pending, Paid]
+  转换:
+    - from: Pending
+      to: Paid
+      trigger: 平台运营确认打款

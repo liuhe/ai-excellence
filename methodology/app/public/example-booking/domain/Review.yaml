@@ -1,0 +1,14 @@
+名称: Review
+表名: review
+字段:
+  - id: Long, 主键自增
+  - bookingId: Long, 关联Booking(唯一)
+  - studentId: Long, 关联Student
+  - teacherId: Long, 关联Teacher
+  - rating: Integer, 评分(1~5)
+  - comment: String, 评价内容
+  - createdAt: Long, 创建时间
+规则:
+  - 内容: 每个Booking只能评价一次，且只有Completed状态的Booking才能评价
+    关联属性: bookingId
+    关联用例: [course-server.提交评价]

@@ -1,0 +1,3 @@
+# 部署视图 — Overview（占位）
+# TODO: 补充部署节点、网络拓扑、配置
+diagram: ./deployment/topology.svg

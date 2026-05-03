@@ -1,0 +1,50 @@
+名称: manager-server
+类型: backend
+技术栈:
+  语言: Java
+  框架:
+    - Spring Boot
+    - Spring Data JPA
+基础设施:
+  - 名称: MySQL
+    类型: database
+    描述: 单实例，存储所有业务数据(Account/Package/Coupon/Request)
+用例:
+  - 名称: 创建账户
+    执行者: Admin
+    api路径: [/api/admin/accounts/batch]
+    规则:
+      - 需要adminKey验证
+      - 内容: 批量生成：指定idPrefix和count，同时为每个账户创建一个初始Package(Pending状态)
+        关联实体: [Account, Package]
+  - 名称: 创建套餐
+    执行者: Admin
+    api路径: [/api/admin/packages/batch]
+    规则:
+      - 需要adminKey验证
+      - 内容: 批量生成Coupon兑换码
+        关联实体: [Coupon.code]
+  - 名称: 查询账户详情
+    执行者: Switch Game Player
+    api路径: [/api/user/account]
+    规则:
+      - 需要username/password验证（adminKey也可作为密码使用）
+      - 返回用户名及其所有Package列表
+  - 名称: 绑定套餐
+    执行者: Switch Game Player
+    api路径: [/api/user/bindCoupon]
+    规则:
+      - 需要username/password验证
+      - 内容: 用户提供兑换码，校验码有效且未被使用后，绑定Coupon并根据其属性创建Pending状态的Package
+        关联实体: [Coupon, Package]
+  - 名称: Get Available Packages
+    执行者: proxy
+    api路径: [/api/internal/users]
+  - 名称: Sync Usage
+    执行者: proxy
+    api路径: [/api/internal/syncUsage]
+    规则:
+      - 内容: 扣减Package优先级：优先精确匹配tag的Active套餐（旧套餐优先），其次Pending套餐；若请求非freedom标签则fallback到freedom类型套餐；仍无则依次使用Expired、Exhausted套餐（新套餐优先）。单个套餐不够扣时填满后继续扣下一个，Exhausted套餐仍可继续累计用量。
+        关联实体: [Package.usedQuota, Package.status]
+      - 内容: Pending套餐首次扣减时自动激活
+        关联实体: [Package.status]

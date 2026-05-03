@@ -1,0 +1,43 @@
+# 领域模型 — Overview
+entities:
+  - name: Account
+    table_name: proxy_user
+    summary: 代理用户账户（用户名+密码）
+    detail: ./domain/Account.yaml
+  - name: Package
+    table_name: proxy_package
+    summary: 用户的流量套餐，含状态机
+    detail: ./domain/Package.yaml
+  - name: Coupon
+    table_name: proxy_coupon
+    summary: 兑换码，兑换后创建对应 Package
+    detail: ./domain/Coupon.yaml
+  - name: Request
+    table_name: proxy_request
+    summary: 代理请求记录
+    detail: ./domain/Request.yaml
+  - name: ProxyInstance
+    table_name: proxy_instance
+    summary: 代理实例注册信息
+    detail: ./domain/ProxyInstance.yaml
+
+relationships:
+  - from: Package
+    to: Account
+    type: many-to-one
+    via: username
+  - from: Coupon
+    to: Account
+    type: many-to-one
+    via: boundUsername
+    备注: 绑定后关联，未绑定时为空
+  - from: Request
+    to: ProxyInstance
+    type: many-to-one
+    via: proxyInstanceId
+  - from: Request
+    to: Account
+    type: many-to-one
+    via: username
+
+diagram: ./domain/er.svg

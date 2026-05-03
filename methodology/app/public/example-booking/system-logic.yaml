@@ -1,0 +1,64 @@
+# 系统逻辑 — Overview
+applications:
+  - name: student-app
+    type: frontend
+    tech_stack:
+      语言: TypeScript
+      框架: [React, TailwindCSS, react-router-dom]
+    summary: 学生端 Web 应用
+    detail: ./system-logic/student-app.yaml
+  - name: teacher-app
+    type: frontend
+    tech_stack:
+      语言: TypeScript
+      框架: [React, TailwindCSS]
+    summary: 教师端 Web 应用
+    detail: ./system-logic/teacher-app.yaml
+  - name: admin-app
+    type: frontend
+    tech_stack:
+      语言: TypeScript
+      框架: [React, Ant Design]
+    summary: 平台运营后台
+    detail: ./system-logic/admin-app.yaml
+  - name: course-server
+    type: backend
+    tech_stack:
+      语言: Java
+      框架: [Spring Boot, Spring Data JPA]
+    summary: 业务后端，覆盖所有业务逻辑
+    detail: ./system-logic/course-server.yaml
+
+application_topology:
+  - from: Student
+    to: student-app
+    label: 浏览课程、预约上课、评价
+    type: call
+    details: [浏览课程, 预约课程, 加入课堂, 评价教师]
+  - from: Teacher
+    to: teacher-app
+    label: 发布课程、管理日程
+    type: call
+    details: [发布课程, 管理时间槽]
+  - from: 平台运营
+    to: admin-app
+    label: 用户管理、结算
+    type: call
+    details: [管理用户, 执行结算]
+  - from: student-app
+    to: course-server
+    label: REST API 调用
+    type: call
+    details: [浏览课程, 创建预约, 取消预约, 加入课堂, 提交评价]
+  - from: teacher-app
+    to: course-server
+    label: REST API 调用
+    type: call
+    details: [创建课程, 管理时间槽, 查看结算]
+  - from: admin-app
+    to: course-server
+    label: REST API 调用
+    type: call
+    details: [管理用户, 执行结算]
+
+diagram: ./system-logic/application-topology.svg

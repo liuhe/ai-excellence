@@ -1,0 +1,351 @@
+# DCDDP Meta-Model Schema v2.0 (multi-file)
+#
+# This schema defines the structure for declarative system modeling.
+# A model conforming to this schema provides enough information for AI
+# to generate a complete, runnable system.
+#
+# Conventions: see modeling-conventions.md (in same directory).
+# AI prompt: see system-modeling-prompt.md.
+#
+# Design principles:
+#   1. Users define WHAT, AI derives HOW.
+#   2. Constraints reduce AI's choice space; natural-language rules give AI freedom.
+#   3. Configuration should be <10% of equivalent code volume.
+#   4. Models express intent and constraints; AI fills in implementation details.
+
+# =============================================================================
+# DIRECTORY STRUCTURE
+# =============================================================================
+#
+# A model is a DIRECTORY (not a single file), organized by 4 views:
+#
+#   model/
+#   ├── business.yaml              # business view overview
+#   ├── business/                  # business view details (optional)
+#   ├── domain.yaml                # domain model overview
+#   ├── domain/                    # domain model details
+#   │   ├── <Entity>.yaml          # one file per entity
+#   │   └── er.svg                 # ER diagram
+#   ├── system-logic.yaml          # system logic overview
+#   ├── system-logic/              # system logic details
+#   │   ├── <app-name>.yaml        # one file per application
+#   │   └── application-topology.svg
+#   ├── deployment.yaml            # deployment view overview
+#   └── deployment/                # deployment details
+#       └── topology.svg
+#
+# Each view's overview yaml is mandatory. Details (sub-files in same-named
+# subdirectory) are optional and added as the model deepens.
+#
+# Naming convention: overview yaml `X.yaml` ↔ details directory `X/`.
+
+# =============================================================================
+# FILE 1: business.yaml — Business View
+# =============================================================================
+#
+# Captures: WHO interacts with the system and WHAT value is delivered.
+# Includes: organization, internal/external participants, systems, system use
+# cases (thin glue layer), and business use cases (value propositions).
+
+business_yaml_schema:
+
+  organization: string                      # required
+
+  business_workers: string | string[]       # internal operators of the system
+
+  external_parties:                          # external participants, grouped by party
+    - name: string                          # required, the party/organization name
+      type: system                          # optional, set when the party itself IS a system
+      participants:                          # optional, when the party has people/devices
+        - name: string
+          type: person | device | system    # required
+      use_cases:                            # optional, for system-type parties
+        - name: string
+          actor: string
+
+  systems:                                  # the systems being modeled
+    - name: string                          # required, globally unique
+      use_cases:                            # SYSTEM USE CASES — thin glue layer, NO rules
+        - name: string                      # unique within this system
+          package: string                   # optional, logical grouping
+          actor: string
+          entry: string                     # entry application use case (format: <app-name>.<UseCaseName>)
+          associations:                      # optional, Include/Extend between system use cases
+            - relation: Include | Extend
+              name: string                  # target system use case name (same system)
+
+  business_use_cases:                       # value propositions
+    - name: string                          # unique within business_use_cases
+      actor: string                         # who triggers it / receives the value
+      system_use_cases: string[]            # references systems[].use_cases by name
+      stakeholder_interests:                 # optional, surfaces hidden expectations
+        - stakeholder: string
+          interest: string
+
+# =============================================================================
+# FILE 2: domain.yaml — Domain Model Overview
+# =============================================================================
+#
+# A scannable list of entities + the relationships between them. Each entity
+# has a one-line summary and a `detail` pointer to the detail file.
+
+domain_yaml_schema:
+
+  entities:                                  # one entry per entity
+    - name: string                          # PascalCase, globally unique
+      table_name: string                    # optional, snake_case
+      summary: string                       # one-line description
+      detail: string                        # path to detail file, e.g., ./domain/Account.yaml
+
+  relationships:                             # cross-entity associations
+    - from: string                          # source entity name
+      to: string                            # target entity name
+      type: one-to-one | one-to-many | many-to-one | many-to-many
+      via: string                           # optional, the field that holds the reference
+      note: string                          # optional, non-obvious semantics
+
+  diagram: string                           # optional, path to SVG (e.g., ./domain/er.svg)
+
+# =============================================================================
+# FILE 3: domain/<Entity>.yaml — Entity Detail
+# =============================================================================
+#
+# Full specification for one entity: fields, state machine, rules, notes.
+
+entity_detail_yaml_schema:
+
+  name: string                              # PascalCase, must match domain.yaml entry
+  table_name: string                        # optional
+
+  fields:                                    # required, compact format
+    - field_name: "Type, description"       # e.g., id: "Long, auto-increment primary key"
+                                            # Types: String, Long, Integer, int, boolean,
+                                            # Enum(Value1/Value2/...), or domain types
+
+  notes: string                             # optional, important domain rules about this entity
+
+  state_machine:                            # optional, for entities with lifecycle
+    field: string                           # the field that holds the state
+    states: string[]
+    transitions:
+      - from: string                        # source state, or "*" for any
+        to: string
+        trigger: string                     # natural language: what causes this
+    notes: string                           # optional
+
+  rules:                                     # optional, entity-level rules
+    - content: string                       # the rule description
+      field: string                         # optional, which field this applies to
+      related_use_cases: string[]           # optional, format: <app-name>.<UseCaseName>
+
+# =============================================================================
+# FILE 4: system-logic.yaml — System Logic Overview
+# =============================================================================
+#
+# A scannable list of applications + their interaction topology. Each
+# application has a one-line summary and a `detail` pointer.
+
+system_logic_yaml_schema:
+
+  applications:
+    - name: string                          # kebab-case, globally unique
+      type: frontend | backend | proxy | external
+      tech_stack:                            # concise here; full version in detail file
+        language: string
+        frameworks: string[]                # optional
+      summary: string
+      detail: string                        # path to detail file
+
+  application_topology:                      # was `system.overview` in v1 schema
+    # High-level semantic view of how applications and external endpoints interact.
+    # Arrow direction = SEMANTIC FLOW (data/value direction), NOT technical call direction.
+    # A pair of applications can have multiple edges with different directions/types.
+    - from: string                          # application name OR external actor/device
+      to: string
+      label: string                         # semantic description
+      type: sync | call                     # sync = async (poll/push/MQ); call = real-time RPC/REST
+      details: string[]                     # optional, references to use case names
+
+  diagram: string                           # optional, path to SVG
+
+# =============================================================================
+# FILE 5: system-logic/<app-name>.yaml — Application Detail
+# =============================================================================
+#
+# Full specification for one application: tech stack, infrastructure, use
+# cases (with rules), and pages (frontend only).
+
+application_detail_yaml_schema:
+
+  name: string                              # kebab-case, must match system-logic.yaml entry
+  type: frontend | backend | proxy | external
+
+  tech_stack:                                # constrains AI's tech choices
+    language: string
+    frameworks: string[]                    # optional
+    storage: string                         # optional
+    middleware: string[]                    # optional
+    implementation: string                  # optional, for external/wrapper apps
+
+  infrastructure:                            # optional, dependencies on databases/caches/MQs
+    - name: string                          # e.g., "MySQL", "Redis (session cache)"
+      type: string                          # database, cache, message-queue, search, etc.
+      description: string                   # purpose and configuration notes
+
+  use_cases:                                 # APPLICATION USE CASES — implementation logic
+    - name: string                          # unique WITHIN this application (cross-app same name OK)
+      package: string                       # optional, logical grouping
+      actor: string
+      api: string[]                         # optional, API endpoints (backend only typically)
+      rules:                                 # optional, natural-language CONSTRAINTS
+        - content: string
+          related_entities: string[]        # optional, format: EntityName or EntityName.fieldName
+      associations:                          # optional, cross-application dependencies
+        - relation: Include | Extend
+          application: string               # optional; omit if same app
+          name: string                      # target use case name
+
+  pages:                                     # frontend only
+    - name: string                          # PascalCase
+      related_use_cases: string[]           # references use case names within this app
+      external_links:                        # optional
+        - label: string
+          url: string
+      display_mappings: string[]            # optional, natural-language UI transformation rules
+
+# =============================================================================
+# FILE 6: deployment.yaml — Deployment View
+# =============================================================================
+#
+# Physical/logical deployment: nodes, network topology, configuration.
+# Schema is preliminary — refine as deployment cases accumulate.
+
+deployment_yaml_schema:
+
+  nodes:
+    - name: string
+      type: vm | container | service        # extend as needed
+      location: string                      # region or environment
+      hosts: string[]                       # application names hosted here
+
+  network:
+    - from: string                          # node name
+      to: string                            # node name
+      port: integer
+      protocol: tcp | http | https
+
+  config:                                    # per-application configuration
+    - application: string
+      env: string[]                         # e.g., ["DB_URL=...", "LOG_LEVEL=info"]
+      secrets: string[]                     # secret keys (values managed externally)
+
+  diagram: string                           # optional, path to SVG
+
+# =============================================================================
+# SCHEMA NOTES
+# =============================================================================
+
+# 1. NAMESPACES AND CROSS-FILE REFERENCES
+#
+#    `name` is unique WITHIN ITS SEMANTIC NAMESPACE, not globally:
+#      - Business use case: unique within business_use_cases
+#      - System use case: unique within its system
+#      - Application use case: unique within its application (cross-app same name allowed)
+#      - Entity / Application / System: globally unique
+#
+#    Cross-namespace references use the `<namespace>.<name>` format:
+#      - entry: manager-ui.BatchCreateAccounts
+#      - related_use_cases: [auth-proxy.AuthenticateAndForward]
+#      - For app-level associations: `application` + `name` separately
+#
+#    Viewer responsibility: load all yaml, validate name uniqueness within
+#    each namespace, support click-through navigation across files.
+
+# 2. THREE-LAYER USE CASE STRUCTURE
+#
+#    Business use cases  → business.yaml          → value propositions
+#    System use cases    → business.yaml          → thin glue, NO rules, has entry
+#    Application use cases → system-logic/<app>.yaml → implementation, rules, associations
+#
+#    Traceability: page → app use case → system use case → business use case.
+#    Pages do NOT directly reference business use cases.
+#    `entry` only points to the front-door app use case; downstream is inferred from Include chain.
+
+# 3. FIELD FORMAT (entity files)
+#
+#    Fields use the compact "name: Type, description" format:
+#      - id: "Long, auto-increment primary key"
+#      - status: "PackageStatus(Pending/Active/Expired/Exhausted), package state"
+#
+#    This keeps detail files readable while providing enough info for AI to
+#    generate correct code.
+
+# 4. STATE MACHINES
+#
+#    Defined inline in the entity detail file, co-located with the entity.
+#    Only entities with status/lifecycle fields need a state_machine block.
+
+# 5. NATURAL LANGUAGE RULES
+#
+#    Rules are free-form natural language. They serve as CONSTRAINTS on AI
+#    behavior, not executable specifications. Rules live in two places:
+#      - Entity rules (domain/<Entity>.yaml rules)
+#      - Application use case rules (system-logic/<app>.yaml use_cases[].rules)
+#
+#    Both support cross-references for bidirectional traceability:
+#      - Entity rule.related_use_cases → app use case
+#      - App use case rule.related_entities → entity (or entity.field)
+#
+#    Rules are never duplicated — they live in one place and link to the other.
+
+# 6. RELATIONSHIPS vs FIELD-LEVEL REFERENCES
+#
+#    Field-level references (e.g., "userId: Long, references User") give the
+#    implementation hint. The relationships section in domain.yaml gives the
+#    big-picture overview. Use the explicit relationships entry for cardinality,
+#    lifecycle coupling, or non-obvious associations.
+
+# 7. APPLICATION TOPOLOGY (was system.overview)
+#
+#    A high-level semantic view of inter-application interactions. Manually
+#    authored (cannot be derived from use case associations alone).
+#      - Arrow direction = SEMANTIC FLOW (data/value), not technical call direction.
+#        Example: if proxy polls manager-server for user data, arrow is
+#        "manager-server → proxy: Provide User Data".
+#      - type: sync (async sync, polling, push, MQ) vs call (real-time RPC/REST).
+#      - A pair of apps can have multiple edges with different directions/types.
+#      - External actors and devices can appear as endpoints alongside applications.
+
+# 8. DIAGRAMS (SVG)
+#
+#    Diagrams are SVG files placed in the corresponding view's details directory
+#    and referenced via the `diagram` field. SVG is preferred over mermaid for
+#    flexibility (AI-generated, viewer-renderable, designer-editable).
+#
+#    CRITICAL: SVG must NOT carry information beyond what is in the YAML. It is
+#    a visualization, not a parallel source of truth. Theoretically the SVG
+#    should be regenerable from the YAML.
+
+# 9. USE CASE PACKAGE GROUPING
+#
+#    Optional `package` field on system use cases and application use cases for
+#    logical grouping (e.g., "Admin Operations", "Taobao Integration"):
+#      - List view: groups packages as separate cards
+#      - Use case diagram: package boundaries via dagre compound layout
+#    Backwards compatible — no package = ungrouped.
+
+# 10. WHAT'S INTENTIONALLY LEFT OUT (HOW concerns)
+#
+#    - Database DDL, indexes, migration scripts (AI derives from entities + tech stack)
+#    - UI component hierarchy, CSS (AI derives from pages + display_mappings)
+#    - Authentication token formats, session internals (AI derives from rules)
+#    - Internal class/package structure (AI's freedom)
+#    - Logging, monitoring (modeled in deployment view if cross-cutting)
+
+# 11. EXTENSIBILITY
+#
+#    Future sections (each as their own view file at the top level):
+#    - security.yaml: cross-cutting auth/authz
+#    - constraints.yaml: code generation rules
+#    - events.yaml: event-driven architectures
+#    - workflows.yaml: multi-step business processes

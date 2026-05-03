@@ -1,0 +1,48 @@
+名称: manager-ui
+类型: frontend
+技术栈:
+  语言: TypeScript
+  框架:
+    - React
+    - react-router-dom
+页面:
+  - 名称: AccountPage
+    关联用例:
+      - 查询账户详情
+      - 绑定套餐
+    外部链接:
+      - 购买账号: https://item.taobao.com/item.htm?id=828597203393
+      - 购买券码: https://item.taobao.com/item.htm?id=829129514317
+    显示映射:
+      - 套餐类型: nintendo → "Switch加速包"，其他原样显示
+      - 速度版本: host前缀 xs → "(极速版)"，hs → "(高速版)"
+      - domain拆分: 按 host:port 拆分为"服务器"和"端口"两列
+  - 名称: AdminPage
+    关联用例:
+      - 创建账户
+      - 创建套餐
+用例:
+  - 名称: 查询账户详情
+    执行者: Switch Game Player
+    关联:
+      - 关系: Include
+        子系统: manager-server
+        名称: 查询账户详情
+  - 名称: 创建账户
+    执行者: Admin
+    关联:
+      - 关系: Include
+        子系统: manager-server
+        名称: 创建账户
+  - 名称: 创建套餐
+    执行者: Admin
+    关联:
+      - 关系: Include
+        子系统: manager-server
+        名称: 创建套餐
+  - 名称: 绑定套餐
+    执行者: Switch Game Player
+    关联:
+      - 关系: Include
+        子系统: manager-server
+        名称: 绑定套餐

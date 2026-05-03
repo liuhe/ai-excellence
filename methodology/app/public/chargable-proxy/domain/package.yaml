@@ -1,0 +1,42 @@
+name: Package
+table_name: package
+fields:
+  - id: "Long, auto-increment primary key"
+  - accountId: "Long, references Account"
+  - name: "String, display name (e.g., '50GB Monthly')"
+  - proxyTierId: "Long, references ProxyTier, determines which speed tier / proxy node serves this package"
+  - accessScope: "String, traffic routing scope: 'nintendo' = Nintendo CDN only, 'freedom' = all traffic"
+  - quotaBytes: "Long, traffic quota in bytes"
+  - usedBytes: "Long, traffic consumed in bytes, default 0"
+  - activatedAt: "LocalDateTime, when the package was activated"
+  - expiresAt: "LocalDateTime, expiration time"
+  - status: "PackageStatus(Pending/Active/Expired/Exhausted), package state"
+  - createdAt: "LocalDateTime, creation time"
+notes: >
+  A package grants an account a certain amount of proxy traffic for a limited time.
+  Multiple packages can be bound to one account; the proxy uses the first active one.
+  proxyTierId determines which speed tier this package uses (e.g., high-speed vs ultra-speed).
+  accessScope controls what traffic is routed: 'nintendo' for Nintendo CDN only, 'freedom' for all.
+state_machine:
+  field: status
+  states: [Pending, Active, Expired, Exhausted]
+  transitions:
+    - from: Pending
+      to: Active
+      trigger: Redemption code is redeemed, or admin manually activates
+    - from: Active
+      to: Exhausted
+      trigger: usedBytes >= quotaBytes
+    - from: Active
+      to: Expired
+      trigger: Current time exceeds expiresAt
+  notes: >
+    Expired is computed at query time based on expiresAt, not persisted via a cron job.
+    When proxy checks validity, it evaluates both usedBytes and expiresAt in real time.
+rules:
+  - content: Only one package per account should be Active at a time; others remain Pending until the current one is exhausted or expired
+    related_use_cases:
+      - auth-proxy.AuthenticateAndForward
+  - content: When an active package is exhausted or expired, the next Pending package (by createdAt order) is automatically activated
+    related_use_cases:
+      - auth-proxy.AuthenticateAndForward

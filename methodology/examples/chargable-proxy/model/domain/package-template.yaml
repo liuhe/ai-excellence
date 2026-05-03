@@ -1,0 +1,14 @@
+name: PackageTemplate
+table_name: package_template
+fields:
+  - id: "Long, auto-increment primary key"
+  - name: "String, display name for packages created from this template (e.g., 'DLC3 高速版 3GB/30d')"
+  - quotaBytes: "Long, traffic quota in bytes"
+  - validityDays: "Integer, package validity in days"
+  - proxyTierId: "Long, references ProxyTier, determines which speed tier the created package uses"
+  - accessScope: "String, traffic routing scope: 'nintendo' = Nintendo CDN only, 'freedom' = all traffic, default 'nintendo'"
+  - active: "Boolean, whether this template is available for use, default true"
+notes: >
+  Defines the specification for a class of packages. Both TaobaoSku and RedemptionCode
+  reference a PackageTemplate to determine what Package to create upon fulfillment.
+  Admin manages templates independently; multiple SKUs or code batches can share one template.

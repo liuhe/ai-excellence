@@ -1,0 +1,51 @@
+名称: student-app
+类型: frontend
+技术栈:
+  语言: TypeScript
+  框架: [React, TailwindCSS, react-router-dom]
+页面:
+  - 名称: CourseListPage
+    关联用例: [浏览课程]
+    显示映射:
+      - 课程卡片展示教师头像、科目、评分、价格
+      - 支持按科目和价格区间筛选
+  - 名称: CourseDetailPage
+    关联用例: [预约课程]
+    显示映射:
+      - 展示教师简介、可用时间槽日历视图
+      - 时间槽状态用颜色区分：绿色可约、灰色已约
+  - 名称: MyBookingsPage
+    关联用例: [预约课程]
+    显示映射:
+      - 按状态分Tab展示：即将上课、已完成、已取消
+  - 名称: ClassroomPage
+    关联用例: [加入课堂]
+  - 名称: ReviewPage
+    关联用例: [评价教师]
+    显示映射:
+      - 星级评分 + 文字评价
+用例:
+  - 名称: 浏览课程
+    执行者: Student
+    关联:
+      - 关系: Include
+        子系统: course-server
+        名称: 浏览课程
+  - 名称: 预约课程
+    执行者: Student
+    关联:
+      - 关系: Include
+        子系统: course-server
+        名称: 创建预约
+  - 名称: 加入课堂
+    执行者: Student
+    关联:
+      - 关系: Include
+        子系统: course-server
+        名称: 获取课堂信息
+  - 名称: 评价教师
+    执行者: Student
+    关联:
+      - 关系: Include
+        子系统: course-server
+        名称: 提交评价

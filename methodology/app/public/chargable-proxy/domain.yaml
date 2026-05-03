@@ -1,0 +1,90 @@
+# Domain Model — Overview
+# Detail per entity: ./domain/<entity>.yaml
+# ER diagram: ./domain/er.svg (TODO: generate)
+
+entities:
+  - name: Account
+    table_name: account
+    summary: Proxy user with credentials. Created by admin or auto-fulfillment.
+    detail: ./domain/account.yaml
+  - name: Package
+    table_name: package
+    summary: Traffic quota grant for an account; only one Active per account at a time.
+    detail: ./domain/package.yaml
+  - name: RedemptionCode
+    table_name: redemption_code
+    summary: One-time code that creates a Package on redemption.
+    detail: ./domain/redemption-code.yaml
+  - name: UsageLog
+    table_name: usage_log
+    summary: Per-request traffic record (batched from auth-proxy).
+    detail: ./domain/usage-log.yaml
+  - name: TaobaoOrder
+    table_name: taobao_order
+    summary: Taobao trade tracking + fulfillment state machine.
+    detail: ./domain/taobao-order.yaml
+  - name: ProxyTier
+    table_name: proxy_tier
+    summary: Speed tier backed by a distinct proxy node (高速版/极速版).
+    detail: ./domain/proxy-tier.yaml
+  - name: PackageTemplate
+    table_name: package_template
+    summary: Specification for a class of packages, referenced by SKU and code.
+    detail: ./domain/package-template.yaml
+  - name: TaobaoSku
+    table_name: taobao_sku
+    summary: Maps a Taobao SKU to a PackageTemplate + fulfillment behavior.
+    detail: ./domain/taobao-sku.yaml
+
+relationships:
+  - from: Package
+    to: Account
+    type: many-to-one
+    via: accountId
+    note: An account can have multiple packages (current + future)
+  - from: RedemptionCode
+    to: Package
+    type: one-to-one
+    via: packageId
+    note: The package created when this code was redeemed; nullable until redemption
+  - from: UsageLog
+    to: Package
+    type: many-to-one
+    via: packageId
+  - from: TaobaoOrder
+    to: Account
+    type: many-to-one
+    via: accountId
+    note: Links the Taobao order to the provisioned proxy account
+  - from: TaobaoOrder
+    to: RedemptionCode
+    type: one-to-one
+    via: redemptionCodeId
+    note: Optional — redemption code generated for the buyer to use for renewals
+  - from: TaobaoOrder
+    to: TaobaoSku
+    type: many-to-one
+    via: skuId
+    note: Records which SKU was ordered, used to look up package spec during fulfillment
+  - from: TaobaoSku
+    to: PackageTemplate
+    type: many-to-one
+    via: packageTemplateId
+    note: Resolves Taobao SKU to the package specification to create
+  - from: RedemptionCode
+    to: PackageTemplate
+    type: many-to-one
+    via: packageTemplateId
+    note: Determines what Package to create when the code is redeemed
+  - from: Package
+    to: ProxyTier
+    type: many-to-one
+    via: proxyTierId
+    note: Which speed tier this package uses
+  - from: PackageTemplate
+    to: ProxyTier
+    type: many-to-one
+    via: proxyTierId
+    note: Which speed tier packages created from this template will use
+
+diagram: ./domain/er.svg

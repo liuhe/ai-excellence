@@ -1,0 +1,15 @@
+名称: Request
+表名: proxy_request
+字段:
+  - id: Long, 主键自增
+  - proxyInstanceId: long, 代理实例ID
+  - proxyDomain: String, 代理域名
+  - localRequestId: long, 本地请求ID(与proxyInstanceId联合唯一)
+  - username: String, 用户名
+  - clientAddr: String, 客户端地址
+  - host: String, 目标主机
+  - path: String, 请求路径
+  - userAgent: String
+  - secChUa: String
+  - tags: String, 标签(以|分隔)
+  - readBytes: long, 已读取字节数

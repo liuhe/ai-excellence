@@ -1,0 +1,35 @@
+名称: Booking
+表名: booking
+字段:
+  - id: Long, 主键自增
+  - studentId: Long, 关联Student
+  - courseId: Long, 关联Course
+  - timeSlotId: Long, 关联TimeSlot
+  - paidAmount: Long, 实付金额(分)
+  - status: BookingStatus(Pending/Confirmed/InProgress/Completed/Cancelled/Refunded)
+  - createdAt: Long, 创建时间
+规则:
+  - 内容: 同一学生同一时间段不能重复预约
+    关联用例: [course-server.创建预约]
+  - 内容: 开课前24小时内取消不退款，超过24小时全额退款
+    关联属性: status
+    关联用例: [course-server.取消预约]
+状态机:
+  字段: status
+  状态: [Pending, Confirmed, InProgress, Completed, Cancelled, Refunded]
+  转换:
+    - from: Pending
+      to: Confirmed
+      trigger: 余额扣减成功
+    - from: Confirmed
+      to: InProgress
+      trigger: 到达课程开始时间
+    - from: InProgress
+      to: Completed
+      trigger: 到达课程结束时间
+    - from: Confirmed
+      to: Cancelled
+      trigger: 学生或教师取消
+    - from: Cancelled
+      to: Refunded
+      trigger: 满足退款条件时自动退款

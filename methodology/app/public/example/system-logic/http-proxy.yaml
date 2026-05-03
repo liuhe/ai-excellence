@@ -1,0 +1,7 @@
+名称: http-proxy
+类型: external
+技术栈:
+  实现: 任意HTTP代理应用
+用例:
+  - 名称: Proxy HTTP Request
+    执行者: proxy

@@ -1,0 +1,24 @@
+名称: Course
+表名: course
+字段:
+  - id: Long, 主键自增
+  - teacherId: Long, 关联Teacher
+  - subject: String, 科目
+  - title: String, 课程标题
+  - description: String, 课程描述
+  - duration: Integer, 课时时长(分钟)
+  - price: Long, 单次价格(分)
+  - status: CourseStatus(Draft/Published/Archived)
+状态机:
+  字段: status
+  状态: [Draft, Published, Archived]
+  转换:
+    - from: Draft
+      to: Published
+      trigger: 教师确认发布
+    - from: Published
+      to: Archived
+      trigger: 教师手动下架或长期无预约
+    - from: Archived
+      to: Published
+      trigger: 教师重新上架

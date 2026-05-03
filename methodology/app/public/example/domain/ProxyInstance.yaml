@@ -1,0 +1,6 @@
+名称: ProxyInstance
+表名: proxy_instance
+字段:
+  - id: Long, 主键自增
+  - domain: String, 代理域名，格式为 host:port
+备注: proxy启动时注册自身获得唯一ID，用于Request记录中标识请求来源节点

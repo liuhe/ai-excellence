@@ -1,0 +1,28 @@
+名称: proxy
+类型: proxy
+技术栈:
+  语言: Go
+基础设施:
+  - 名称: Prometheus
+    类型: monitoring
+    描述: 请求量、延迟等指标采集
+用例:
+  - 名称: Do Proxy
+    执行者: Switch Game Console
+    规则:
+      - '使用HTTP Basic Auth（Proxy-Authorization头）进行用户认证，认证失败返回 407 Proxy Authentication Required + Proxy-Authenticate: Basic realm="proxy" header'
+      - 根据Account的Available Package进行放行，只在建立连接时检查，下载到一半不会断开连接
+      - 非代理请求（非CONNECT且无协议前缀的请求）转发到本地资源服务地址(resaddr)，不做认证
+      - 根据请求host/UA计算tag：nintendo域名(*.nintendo.com/*.nintendo.net)→nintendo标签；UA含(nn且host为*.amazonaws.com且path含upload→nintendo标签；其他→freedom标签
+      - 每10秒从manager-server轮询加载所有用户数据
+      - 请求变更批量积攒，每5秒或满1000条同步一次
+    关联:
+      - 关系: Include
+        子系统: manager-server
+        名称: Get Available Packages
+      - 关系: Include
+        子系统: manager-server
+        名称: Sync Usage
+      - 关系: Include
+        子系统: http-proxy
+        名称: Proxy HTTP Request

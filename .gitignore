@@ -2,3 +2,12 @@ projects/*
 !projects/.gitkeep
 .claude_global
 .DS_Store
+methodology/app/node_modules/
+methodology/app/dist/
+.claude/settings.local.json
+
+# 运行时由 /model-view 在受管工程上注册的模型软链与 models.json 改动属于本机状态，不入 git
+methodology/app/public/*/
+!methodology/app/public/chargable-proxy/
+!methodology/app/public/example/
+!methodology/app/public/example-booking/

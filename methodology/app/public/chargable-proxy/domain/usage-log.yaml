@@ -1,0 +1,12 @@
+name: UsageLog
+table_name: usage_log
+fields:
+  - id: "Long, auto-increment primary key"
+  - accountId: "Long, references Account"
+  - packageId: "Long, references Package"
+  - bytesTransferred: "Long, bytes transferred in this request"
+  - requestHost: "String, target host of the proxied request"
+  - loggedAt: "LocalDateTime, timestamp"
+notes: >
+  Records individual proxy request traffic for auditing and analytics.
+  The auth-proxy reports usage in batches to manager-server for efficiency.

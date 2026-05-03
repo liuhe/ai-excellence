@@ -1,0 +1,36 @@
+名称: teacher-app
+类型: frontend
+技术栈:
+  语言: TypeScript
+  框架: [React, TailwindCSS]
+页面:
+  - 名称: DashboardPage
+    关联用例: [管理时间槽]
+    显示映射:
+      - 周视图日历展示时间槽，支持拖拽创建
+      - 已预约的时间槽显示学生信息
+  - 名称: CourseManagePage
+    关联用例: [发布课程]
+  - 名称: SettlementPage
+    关联用例: [查看结算]
+    显示映射:
+      - 按月展示结算明细，显示佣金比例和实收金额
+用例:
+  - 名称: 发布课程
+    执行者: Teacher
+    关联:
+      - 关系: Include
+        子系统: course-server
+        名称: 创建课程
+  - 名称: 管理时间槽
+    执行者: Teacher
+    关联:
+      - 关系: Include
+        子系统: course-server
+        名称: 管理时间槽
+  - 名称: 查看结算
+    执行者: Teacher
+    关联:
+      - 关系: Include
+        子系统: course-server
+        名称: 查看结算
