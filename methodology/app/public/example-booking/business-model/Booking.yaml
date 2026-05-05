@@ -33,3 +33,19 @@
     - from: Cancelled
       to: Refunded
       trigger: 满足退款条件时自动退款
+relationships:
+  - kind: associates
+    target: Student
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: studentId
+  - kind: associates
+    target: Course
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: courseId
+  - kind: associates
+    target: TimeSlot
+    target_kind: business-entity
+    cardinality: one-to-one
+    via: timeSlotId

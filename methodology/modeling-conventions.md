@@ -138,7 +138,6 @@ YAML 中通过 `diagram` 字段引用：
 
 ```yaml
 # business-model.yaml
-relationships: [...]
 diagram: ./business-model/er.svg
 ```
 
@@ -218,7 +217,7 @@ business:
 
 ### Role = 接口/契约 + implements 关系
 
-四色里的 **黄色 Role** 不是普通实体，本质是**接口**：定义"扮演这个角色需要满足什么"。其他实体（PPT / MI / Description）声明 `implements: [<RoleName>...]` 表示"我能扮演这些角色"。
+四色里的 **黄色 Role** 不是普通实体，本质是**接口**：定义"扮演这个角色需要满足什么"。其他实体（PPT / MI / Description）通过 `relationships:` 中 `kind: implements` 声明扮演哪些角色（统一关系模型见下一节）。
 
 ```yaml
 # business-model/Customer.yaml — 一个 Role 实体
@@ -230,7 +229,13 @@ fields:
 # business-model/Person.yaml — 一个 PPT 实体，扮演 Customer 角色
 name: Person
 archetype: party-place-thing
-implements: [Customer, Employee]   # 同时是顾客和雇员
+relationships:
+  - kind: implements
+    target: Customer
+    target_kind: business-entity   # 同 business-model 内的另一实体
+  - kind: implements
+    target: Employee
+    target_kind: business-entity
 fields:
   - id: "..."
 ```
@@ -254,13 +259,13 @@ fields:
 
 - 同一业务实体可在不同 app 有不同的 DDD 实现（vchat-relay 的 `Peer` 是简单路由表项；vchat-client 的 `Peer` 是富 Aggregate）
 - 也可以**不实现**——某 app 根本用不到某业务实体就不出现
-- 跨层映射用 `domain_model.aggregates[].business_entity: <BusinessEntityName>` 字段（接口/角色实现用单独的 `implements: [<RoleName>...]`）
+- 跨层映射统一用 `relationships:` 段：`{kind: implements, target: <BusinessEntityName>, target_kind: business-entity}`
 
 ### DDD 构造块
 
 | 构造块 | 含义 | 例 |
 |--------|------|-----|
-| **Aggregate** | 根实体 + 内含实体 + VO + 事务边界 + 不变量 | `OrderAggregate` (root: Order, contains: OrderLine[], ShippingAddress) |
+| **Aggregate** | 根实体 + 内含实体 + VO + 事务边界 + 不变量；root 是对 entities[] 中一员的名字引用 | `OrderAggregate` (root: Order, entities: [Order, OrderLine], value_objects: [ShippingAddress]) |
 | **Value Object** | 不可变，按值相等 | `Money`, `Address`, `RouteState` |
 | **Repository** | 对聚合的集合抽象 | `OrderRepository`（findById, save, findByCustomer 等） |
 | **Domain Service** | 不属单一聚合的领域逻辑 | `PriceCalculator`（涉及 Order + Customer + Product） |
@@ -283,16 +288,79 @@ domain_model:
       notes: 给一组订单项报价；不同促销策略走不同实现
   aggregates:
     - name: OrderAggregate
-      business_entity: Order             # 跨层映射：本聚合实现哪个业务实体
-      implements: [PriceQuoter]          # 本 app 内本聚合扮演的角色（接口实现）
-      ...
+      root: Order                      # 引用下面 entities[] 中的 Order（本层实体），不是业务实体 Order
+      entities:
+        - name: Order                  # root entity 在本层定义（含字段）
+          fields:
+            - id: "Long, primary key"
+            - status: "OrderStatus, ..."
+        - name: OrderLine              # 聚合内其他实体
+          fields:
+            - sku: "String, ..."
+            - qty: "Int, ..."
+      relationships:
+        - kind: implements             # 跨层映射：本 app 在应用层实现业务实体 Order（业务实体不入 entities[]）
+          target: Order
+          target_kind: business-entity
+        - kind: implements             # 接口实现：扮演本 app 内的 Role
+          target: PriceQuoter
+          target_kind: role
+      invariants: [...]
 ```
 
-注意：
+`kind: implements` 在两种语义下都用，靠 `target_kind` 区分：
+- `target_kind: business-entity` → 跨层（应用层 → 业务层）；业务实体不属于本层，只通过此关系建立可跳转的映射
+- `target_kind: role` → 同层接口实现
 
-- `business_entity:` 是 **跨层映射**（应用层 → 业务层），不是接口实现
-- `implements:` 是 **本层接口实现**（本 app 内）
-- 二者**不同概念，不要混用**——例如 OrderAggregate 实现 Order 业务实体（`business_entity: Order`）的同时也扮演 PriceQuoter 角色（`implements: [PriceQuoter]`）
+### 聚合根（root）的引用语义
+
+`aggregate.root` 是对**本层 entities[] 中某一实体的名字引用**——不是定义新实体的地方：
+
+- `root` 自身不能声明字段；字段在被引用的 entities[] 项里
+- `root` 不能引用业务实体（业务实体不属于本层）；要表达"本聚合实现了某业务实体"用 `relationships: implements business-entity`
+- 应用层 root entity 与业务实体常常同名（如本层 `Order` 与业务实体 `Order` 都叫 Order），但分别在两层独立声明，字段可同步、裁剪或增补
+- viewer：aggregate 节点直接以 root entity 名呈现；应用领域模型图不画业务实体节点（业务实体只在详情面板里展示）
+
+详见 schema NOTE 17。
+
+## 12. 统一关系模型（Relationships）
+
+每个构造块（business entity / aggregate / VO / repository / service / event / role）都用同一套 `relationships:` 段表达**出向**关系。详见 schema NOTE 12。
+
+### 4 种 kind
+
+| kind | 中文 | 语义 | 视觉 |
+|------|------|------|------|
+| `depends-on` | 依赖 | A 临时用 B 完成工作（参数 / 调用），不持有引用 | 虚线 + 普通箭头 |
+| `implements` | 实现 | A 实现 B 的契约（接口 / Role / 跨层业务实体） | 虚线 + UML 空心三角 |
+| `associates` | 关联 | A 持有 B 的引用（字段 / ID 引用），可单向或双向 | 实线 + 普通箭头（`bidirectional: true` 时双端无箭头） |
+| `composition` | 聚合 / 强所有权 | A 拥有 B；B 生命周期依附 A（值类型 / 嵌入式 / 内联） | 实线 + UML 实心菱形 |
+
+### 字段
+
+```yaml
+relationships:
+  - kind: depends-on | implements | associates | composition
+    target: <name>                         # 目标构造块名
+    target_kind: business-entity | role | aggregate | value-object | repository | domain-service | domain-event
+                                           # optional, 跨类型同名时必填
+    bidirectional: true                    # optional, 仅 associates 可设
+    cardinality: one-to-one | one-to-many | many-to-one | many-to-many   # optional
+    via: <field>                           # optional, 持有引用的字段
+    note: <string>                         # optional
+```
+
+### 存储约定
+
+- **有向关系**（depends-on / implements / composition）：记在主动方
+- **双向关联**（`associates` + `bidirectional: true`）：只记一边即可，viewer 推导另一边
+- **单向关联**（`associates`）：记在持有引用的一方
+
+### Viewer 行为
+
+- 加载所有构造块后，建立"出向 + 入向"双向索引
+- 渲染时按 kind 用不同样式
+- detail 页面同时展示主动出向关系**和**被动入向关系（"被谁依赖 / 被谁实现 / 被谁关联 / 被谁聚合"）
 
 ### 判断"什么需要 DDD 建模"
 
@@ -302,7 +370,7 @@ domain_model:
 - **Domain Service**：跨多个 Aggregate 的逻辑（不属于任何单个 Aggregate）
 - **Domain Event**：有业务方需要知道、可能触发其他流程的状态变化（不是普通日志）
 
-## 12. 模型 / 代码一致性（硬约束）
+## 13. 模型 / 代码一致性（硬约束）
 
 > 这是 DCDDP 区别于"画图工具"的关键。模型不是装饰品，是 source of truth。
 
@@ -338,5 +406,6 @@ domain_model:
 | 用例 Package 分组 | 2026-03-17 |
 | 4 视图 / Overview-Details 递归 / 多文件 / SVG / 命名空间 | 2026-04-26 |
 | 应用 type `client` / 网络 protocol `udp` / relation `composition` / 实体 archetype 4 色 | 2026-05-03 |
-| 模型 / 代码一致性硬约束（第 12 节） | 2026-05-03 |
+| 模型 / 代码一致性硬约束（第 13 节） | 2026-05-03 |
+| 统一关系模型（第 12 节）：4 种 kind（depends-on / implements / associates / composition）+ relationships 段替代散落的 implements/business_entity/aggregate 字段 | 2026-05-04 |
 | 业务模型 / 应用领域模型分层（第 11 节）+ 文件组织从 `domain/` → `business-model/` + 各 app 加 `domain_model` 段 | 2026-05-03 |

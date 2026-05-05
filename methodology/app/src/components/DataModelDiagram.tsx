@@ -1,6 +1,7 @@
 import dagre from 'dagre'
 import { n } from '../types'
 import type { Model } from '../types'
+import { gatherBusinessModelRelationships } from '../relationships'
 
 interface Props {
   model: Model
@@ -9,7 +10,7 @@ interface Props {
 export function DataModelDiagram({ model }: Props) {
   const sys = model.system
   const dataModels = (sys.data_models || sys.数据模型 || [])
-  const relationships = (sys.relationships || sys.关系 || [])
+  const relationships = gatherBusinessModelRelationships(dataModels)
 
   if (dataModels.length === 0) return null
 
@@ -41,13 +42,16 @@ export function DataModelDiagram({ model }: Props) {
 
   // Add relationship edges (skip if endpoints not declared)
   relationships.forEach(r => {
-    const from = r.from ? String(r.from) : ''
-    const to = r.to ? String(r.to) : ''
+    const from = r.from
+    const to = r.to
     if (!from || !to) return
+    // Only render entity-to-entity relations on ER diagram (skip implements to roles etc., they go to other layer)
+    if (r.target_kind && r.target_kind !== 'business-entity') return
     if (g.hasNode(from) && g.hasNode(to)) {
-      const relType = String(r.type || '')
-      const via = r.via ? String(r.via) : ''
-      const relation = (r.relation === 'composition') ? 'composition' : 'association'
+      const relType = r.cardinality || ''
+      const via = r.via || ''
+      // Map kind to legacy 'relation' style for renderer (dashed/diamond for composition, solid for associates/depends-on)
+      const relation = r.kind === 'composition' ? 'composition' : 'association'
       g.setEdge(from, to, { label: relType, via, relation })
     }
   })

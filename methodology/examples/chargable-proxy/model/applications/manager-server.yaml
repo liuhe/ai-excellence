@@ -210,9 +210,26 @@ domain_model:
 
   aggregates:
     - name: AccountAggregate
-      business_entity: Account
-      implements: [PackageActivationTarget, UsageConsumer]
       root: Account
+      entities:
+        - name: Account
+          fields:
+            - id: "Long, auto-increment primary key"
+            - username: "String, unique, used as HTTP proxy username"
+            - password: "String, used as HTTP proxy password"
+            - status: "AccountStatus(Active/Disabled), account state"
+            - createdAt: "LocalDateTime, creation time"
+            - updatedAt: "LocalDateTime, last update time"
+        - name: Package
+          fields:
+            - id: "Long, auto-increment primary key"
+            - accountId: "Long, owning Account"
+            - templateId: "Long, references PackageTemplate"
+            - status: "PackageStatus(Pending/Active/Exhausted/Expired), package lifecycle"
+            - quotaBytes: "Long, traffic quota allotted"
+            - usedBytes: "Long, accumulated consumed bytes, default 0"
+            - activatedAt: "LocalDateTime, when status entered Active, nullable"
+            - expireAt: "LocalDateTime, when validity ends, nullable until activated"
       invariants:
         - Account 必有至少一个 Pending / Active Package（无包账户视为已禁用）
         - 同时只能有一个 Active Package；激活下一个时需先把当前 Active 设为 Exhausted/Expired
@@ -221,22 +238,60 @@ domain_model:
         所有 Package 状态变更（Pending → Active → Exhausted/Expired）通过 Account 上的方法触发，
         保证不变量。
 
+      relationships:
+        - kind: implements
+          target: Account
+          target_kind: business-entity
+        - kind: implements
+          target: PackageActivationTarget
+          target_kind: role
+        - kind: implements
+          target: UsageConsumer
+          target_kind: role
     - name: PackageTemplateAggregate
-      business_entity: PackageTemplate
       root: PackageTemplate
+      entities:
+        - name: PackageTemplate
+          fields:
+            - id: "Long, auto-increment primary key"
+            - name: "String, display name for packages created from this template"
+            - quotaBytes: "Long, traffic quota in bytes"
+            - validityDays: "Integer, package validity in days"
+            - proxyTierId: "Long, references ProxyTier"
+            - accessScope: "String, 'nintendo' or 'freedom'"
+            - active: "Boolean, whether template is available for use"
       invariants:
         - quotaBytes 与 validityDays 创建后不可变更（变更需新建模板）
 
+      relationships:
+        - kind: implements
+          target: PackageTemplate
+          target_kind: business-entity
     - name: TaobaoOrderAggregate
-      business_entity: TaobaoOrder
       root: TaobaoOrder
       entities:
-        - name: TaobaoSku
+        - name: TaobaoOrder
           fields:
-            - skuId: "String, 淘宝 SKU 全局唯一 ID"
+            - id: "Long, auto-increment primary key"
+            - taobaoTradeId: "String, unique, Taobao trade ID (tid)"
+            - taobaoOrderId: "String, Taobao sub-order ID (oid), nullable"
+            - skuId: "String, Taobao SKU ID"
+            - buyerNick: "String, buyer's Taobao nickname"
+            - accountId: "Long, references Account, nullable until fulfilled"
+            - redemptionCodeId: "Long, references RedemptionCode, nullable"
+            - status: "TaobaoOrderStatus(Received/Fulfilled/DeliveryFailed/Refunded)"
+            - paidAt: "LocalDateTime, when the buyer paid"
+            - fulfilledAt: "LocalDateTime, when fulfillment completed, nullable"
+            - failReason: "String, delivery failure reason, nullable"
+            - retryCount: "Integer, number of delivery retries, default 0"
+            - createdAt: "LocalDateTime, creation time"
       invariants:
-        - 同一订单 skuId 重复处理时幂等（按 (orderId, skuId) 去重）
+        - 同一 taobaoTradeId 重复处理时幂等
 
+      relationships:
+        - kind: implements
+          target: TaobaoOrder
+          target_kind: business-entity
   value_objects:
     - name: UsageRecord
       fields:
@@ -247,14 +302,23 @@ domain_model:
 
   repositories:
     - name: AccountRepository
-      aggregate: AccountAggregate
       operations: [findById, findByUsername, save, findActiveAccounts]
+      relationships:
+        - kind: composition
+          target: AccountAggregate
+          target_kind: aggregate
     - name: PackageTemplateRepository
-      aggregate: PackageTemplateAggregate
       operations: [findById, findBySkuMapping, save]
+      relationships:
+        - kind: composition
+          target: PackageTemplateAggregate
+          target_kind: aggregate
     - name: TaobaoOrderRepository
-      aggregate: TaobaoOrderAggregate
       operations: [findByOrderId, save, markProcessed]
+      relationships:
+        - kind: composition
+          target: TaobaoOrderAggregate
+          target_kind: aggregate
 
   domain_services:
     - name: PackageActivator

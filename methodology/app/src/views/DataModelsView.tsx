@@ -3,13 +3,14 @@ import { n } from '../types'
 import { Card, Badge, DocsSection } from '../components/UI'
 import { DataModelDiagram } from '../components/DataModelDiagram'
 import { Link } from '../components/ModelLink'
+import { gatherBusinessModelRelationships } from '../relationships'
 
 type SubView = 'entities-overview' | 'entity-details' | 'relationships'
 
 export function DataModelsView({ model, subView, onNavigate }: { model: Model; subView: SubView; onNavigate: (id: string) => void }) {
   const sys = model.system
   const dataModels = (sys.data_models || sys.数据模型 || [])
-  const relationships = (sys.relationships || sys.关系 || [])
+  const relationships = gatherBusinessModelRelationships(dataModels)
 
   return (
     <div className="space-y-6">
@@ -53,10 +54,10 @@ export function DataModelsView({ model, subView, onNavigate }: { model: Model; s
             <div className="space-y-2">
               {relationships.map((r, i) => (
                 <div key={i} className="flex items-center gap-3 text-sm">
-                  <Badge color="blue"><Link name={String(r.from)} model={model} onNavigate={onNavigate} /></Badge>
-                  <span className="text-slate-400 text-xs">{r.type}</span>
+                  <Badge color="blue"><Link name={r.from} model={model} onNavigate={onNavigate} /></Badge>
+                  <span className="text-slate-400 text-xs">{r.kind}{r.cardinality ? ` (${r.cardinality})` : ''}</span>
                   <span className="text-slate-400">→</span>
-                  <Badge color="blue"><Link name={String(r.to)} model={model} onNavigate={onNavigate} /></Badge>
+                  <Badge color="blue"><Link name={r.to} model={model} onNavigate={onNavigate} /></Badge>
                   {r.via && <span className="text-xs text-slate-400">(via {r.via})</span>}
                   {r.note && <span className="text-xs text-slate-500 italic">{r.note}</span>}
                 </div>

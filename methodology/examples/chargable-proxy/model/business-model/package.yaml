@@ -39,3 +39,16 @@ rules:
   - content: When an active package is exhausted or expired, the next Pending package (by createdAt order) is automatically activated
     related_use_cases:
       - auth-proxy.AuthenticateAndForward
+relationships:
+  - kind: associates
+    target: Account
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: accountId
+    note: An account can have multiple packages (current + future)
+  - kind: associates
+    target: ProxyTier
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: proxyTierId
+    note: Which speed tier this package uses

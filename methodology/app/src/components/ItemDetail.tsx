@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Model } from '../types'
+import type { Model, Relationship } from '../types'
 import { n, na } from '../types'
 import { Card, Badge, DocsSection } from './UI'
 import { SystemUseCaseDiagram, AppUseCaseDiagram, SystemDetailDiagram, AppDetailDiagram } from './UseCaseDiagram'
@@ -7,6 +7,14 @@ import { Link } from './ModelLink'
 import { StateMachineDiagram } from './StateMachineDiagram'
 import { EntityRelDiagram } from './EntityRelDiagram'
 import { MD } from './MD'
+import { AppDomainDiagram } from './AppDomainDiagram'
+import { businessEntityOf, rolesOf, repositoryAggregateOf, targetsOf, gatherBusinessModelRelationships } from '../relationships'
+
+// 业务模型层用：实体扮演的角色 = relationships 里 kind=implements 且 target_kind=business-entity 的目标
+//（业务模型内部的 Role 也是 business-model entity，不是 application Role）
+function rolesOfFromBusinessEntity(rels?: Relationship[]): string[] {
+  return targetsOf(rels, 'implements', 'business-entity')
+}
 
 interface Props {
   model: Model
@@ -449,9 +457,9 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
       const fields = (dm.fields || dm.字段 || [])
       const notes = n(dm, 'notes', '备注')
       const sm = dm.state_machine || dm.状态机
-      const relationships = (sys.relationships || sys.关系 || [])
+      const allRels = gatherBusinessModelRelationships(dataModels)
       const dmName = n(dm, 'name', '名称')
-      const relatedRels = relationships.filter(r => String(r.from) === dmName || String(r.to) === dmName)
+      const relatedRels = allRels.filter(r => r.from === dmName || r.to === dmName)
       const crossRefs = dataModels
         .flatMap(other => (other.fields || other.字段 || []).map(f => {
           const entry = Object.entries(f)[0]
@@ -471,7 +479,7 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
               </span>
             )}
             {dm.archetype && <Badge color={dm.archetype === 'role' ? 'amber' : dm.archetype === 'moment-interval' ? 'pink' : dm.archetype === 'party-place-thing' ? 'green' : 'blue'}>{dm.archetype}</Badge>}
-            {dm.implements && dm.implements.length > 0 && (<><span className="text-xs text-slate-500">扮演角色:</span>{dm.implements.map((r, j) => <Badge key={j} color="amber"><Link name={r} model={model} onNavigate={onNavigate} /></Badge>)}</>)}
+            {(() => { const roles = rolesOf(dm.relationships).concat(rolesOfFromBusinessEntity(dm.relationships)); return roles.length > 0 ? (<><span className="text-xs text-slate-500">实现:</span>{roles.map((r, j) => <Badge key={j} color="amber"><Link name={r} model={model} onNavigate={onNavigate} /></Badge>)}</>) : null })()}
           </div>
           <Card>
             <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">字段</h3>
@@ -575,17 +583,17 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
           })()}
           {sm && <StateMachineDiagram sm={sm} />}
           {sm && <StateMachineCard sm={sm} />}
-          {relatedRels.length > 0 && <EntityRelDiagram entityName={dmName} relationships={relatedRels.map(r => ({ from: String(r.from), to: String(r.to), type: String(r.type), via: r.via ? String(r.via) : undefined }))} />}
+          {relatedRels.length > 0 && <EntityRelDiagram entityName={dmName} relationships={relatedRels.map(r => ({ from: r.from, to: r.to, type: r.cardinality || (r.kind || ''), via: r.via }))} />}
           {relatedRels.length > 0 && (
             <Card>
               <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">关系</h3>
               <div className="space-y-2">
                 {relatedRels.map((r, i) => (
                   <div key={i} className="flex items-center gap-3 text-sm">
-                    <Badge color="blue"><Link name={String(r.from)} model={model} onNavigate={onNavigate} /></Badge>
-                    <span className="text-slate-400 text-xs">{r.type}</span>
+                    <Badge color="blue"><Link name={r.from} model={model} onNavigate={onNavigate} /></Badge>
+                    <span className="text-slate-400 text-xs">{r.kind}{r.cardinality ? ` (${r.cardinality})` : ''}</span>
                     <span className="text-slate-400">→</span>
-                    <Badge color="blue"><Link name={String(r.to)} model={model} onNavigate={onNavigate} /></Badge>
+                    <Badge color="blue"><Link name={r.to} model={model} onNavigate={onNavigate} /></Badge>
                     {r.via && <span className="text-xs text-slate-400">(via {r.via})</span>}
                     {r.note && <span className="text-xs text-slate-500 italic">{r.note}</span>}
                   </div>
@@ -1157,6 +1165,7 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-slate-800">🧱 {aName} · 应用领域模型</h2>
           <p className="text-sm text-slate-500">本 app 的 DDD 构造块（角色 / 聚合 / VO / 仓储 / 领域服务 / 领域事件）</p>
+          <AppDomainDiagram app={app} />
           {dm.roles && dm.roles.length > 0 && (
             <Card>
               <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">角色 / 接口 ({dm.roles.length})</h3>
@@ -1175,15 +1184,19 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
             <Card>
               <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">聚合 ({dm.aggregates.length})</h3>
               <ul className="space-y-1">
-                {dm.aggregates.map((a, j) => (
-                  <li key={j} className="flex items-center gap-2 text-sm flex-wrap">
-                    <span>◆</span>
-                    <span className="font-medium text-slate-700">{a.name}</span>
-                    {a.business_entity && (<><span className="text-xs text-slate-400">→</span><Badge color="purple"><Link name={a.business_entity} model={model} onNavigate={onNavigate} /></Badge></>)}
-                    {a.implements && a.implements.length > 0 && (<><span className="text-xs text-slate-400">扮演:</span>{a.implements.map((roleName, k) => <Badge key={k} color="amber">{roleName}</Badge>)}</>)}
-                    {a.root && <span className="text-xs text-slate-500">根: {a.root}</span>}
-                  </li>
-                ))}
+                {dm.aggregates.map((a, j) => {
+                  const be = businessEntityOf(a.relationships)
+                  const roles = rolesOf(a.relationships)
+                  return (
+                    <li key={j} className="flex items-center gap-2 text-sm flex-wrap">
+                      <span>◆</span>
+                      <span className="font-medium text-slate-700">{a.name}</span>
+                      {be && (<><span className="text-xs text-slate-400">→</span><Badge color="purple"><Link name={be} model={model} onNavigate={onNavigate} /></Badge></>)}
+                      {roles.length > 0 && (<><span className="text-xs text-slate-400">扮演:</span>{roles.map((r, k) => <Badge key={k} color="amber">{r}</Badge>)}</>)}
+                      {a.root && <span className="text-xs text-slate-500">根: {a.root}</span>}
+                    </li>
+                  )
+                })}
               </ul>
             </Card>
           )}
@@ -1196,7 +1209,10 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
           {dm.repositories && dm.repositories.length > 0 && (
             <Card>
               <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">仓储 ({dm.repositories.length})</h3>
-              <ul className="space-y-1">{dm.repositories.map((r, j) => (<li key={j} className="flex items-center gap-2 text-sm"><span>🗄️</span><span className="font-medium text-slate-700">{r.name}</span>{r.aggregate && <span className="text-xs text-slate-500">→ {r.aggregate}</span>}</li>))}</ul>
+              <ul className="space-y-1">{dm.repositories.map((r, j) => {
+                const agg = repositoryAggregateOf(r.relationships)
+                return (<li key={j} className="flex items-center gap-2 text-sm"><span>🗄️</span><span className="font-medium text-slate-700">{r.name}</span>{agg && <span className="text-xs text-slate-500">→ {agg}</span>}</li>)
+              })}</ul>
             </Card>
           )}
           {dm.domain_services && dm.domain_services.length > 0 && (
@@ -1225,21 +1241,25 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
           <div className="flex gap-2 items-center flex-wrap">
             <Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge>
             <Badge color="gray">聚合（Aggregate）</Badge>
-            {agg.business_entity && (<><span className="text-xs text-slate-500">业务实体:</span><Badge color="purple"><Link name={agg.business_entity} model={model} onNavigate={onNavigate} /></Badge></>)}
-            {agg.implements && agg.implements.length > 0 && (<><span className="text-xs text-slate-500">扮演角色:</span>{agg.implements.map((r, j) => <Badge key={j} color="amber">{r}</Badge>)}</>)}
+            {(() => { const be = businessEntityOf(agg.relationships); return be ? (<><span className="text-xs text-slate-500">业务实体:</span><Badge color="purple"><Link name={be} model={model} onNavigate={onNavigate} /></Badge></>) : null })()}
+            {(() => { const roles = rolesOf(agg.relationships); return roles.length > 0 ? (<><span className="text-xs text-slate-500">扮演角色:</span>{roles.map((r, j) => <Badge key={j} color="amber">{r}</Badge>)}</>) : null })()}
           </div>
           {agg.root && (
             <Card>
               <h3 className="text-xs font-semibold text-slate-400 uppercase mb-1">聚合根</h3>
-              <p className="text-slate-700">{agg.root}</p>
+              <p className="text-slate-700">{agg.root}（在下方"实体"列表中定义）</p>
             </Card>
           )}
           {agg.entities && agg.entities.length > 0 && (
             <Card>
-              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">内含实体（除根之外）</h3>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">实体（含根）</h3>
               {agg.entities.map((e, j) => (
                 <div key={j} className="mb-3">
-                  <div className="font-semibold text-slate-700 text-sm">{e.name}</div>
+                  <div className="font-semibold text-slate-700 text-sm flex items-center gap-2">
+                    {e.name === agg.root && <span title="聚合根">★</span>}
+                    <span>{e.name}</span>
+                    {e.name === agg.root && <Badge color="purple">root</Badge>}
+                  </div>
                   {e.fields && e.fields.length > 0 && <FieldsTable fields={e.fields} />}
                 </div>
               ))}
@@ -1282,7 +1302,7 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
           <div className="flex gap-2 items-center flex-wrap">
             <Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge>
             <Badge color="gray">值对象（Value Object）</Badge>
-            {vo.implements && vo.implements.length > 0 && (<><span className="text-xs text-slate-500">扮演角色:</span>{vo.implements.map((r, j) => <Badge key={j} color="amber">{r}</Badge>)}</>)}
+            {(() => { const roles = rolesOf(vo.relationships); return roles.length > 0 ? (<><span className="text-xs text-slate-500">扮演角色:</span>{roles.map((r, j) => <Badge key={j} color="amber">{r}</Badge>)}</>) : null })()}
           </div>
           {vo.fields && vo.fields.length > 0 && (<Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">字段</h3><FieldsTable fields={vo.fields} /></Card>)}
         </div>
@@ -1296,14 +1316,18 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
       // who implements this role within the app?
       const implementers: { kind: string; name: string }[] = []
       const dm = app?.domain_model
+      const roleName = role.name || ''
       if (dm) {
         for (const agg of (dm.aggregates || [])) {
-          if (agg.implements?.includes(role.name || '')) implementers.push({ kind: '聚合', name: agg.name || '' })
-          for (const e of (agg.entities || [])) if (e.implements?.includes(role.name || '')) implementers.push({ kind: '实体', name: `${agg.name}.${e.name}` })
-          for (const v of (agg.value_objects || [])) if (v.implements?.includes(role.name || '')) implementers.push({ kind: '聚合内 VO', name: `${agg.name}.${v.name}` })
+          if (rolesOf(agg.relationships).includes(roleName)) implementers.push({ kind: '聚合', name: agg.name || '' })
+          for (const e of (agg.entities || [])) if (rolesOf(e.relationships).includes(roleName)) implementers.push({ kind: '实体', name: `${agg.name}.${e.name}` })
+          for (const v of (agg.value_objects || [])) if (rolesOf(v.relationships).includes(roleName)) implementers.push({ kind: '聚合内 VO', name: `${agg.name}.${v.name}` })
         }
         for (const v of (dm.value_objects || [])) {
-          if (v.implements?.includes(role.name || '')) implementers.push({ kind: 'VO', name: v.name || '' })
+          if (rolesOf(v.relationships).includes(roleName)) implementers.push({ kind: 'VO', name: v.name || '' })
+        }
+        for (const s of (dm.domain_services || [])) {
+          if (rolesOf(s.relationships).includes(roleName)) implementers.push({ kind: '领域服务', name: s.name || '' })
         }
       }
       return (
@@ -1334,7 +1358,7 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
       return (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-slate-800">🗄️ {repo.name}</h2>
-          <div className="flex gap-2"><Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge><Badge color="gray">仓储（Repository）</Badge>{repo.aggregate && (<><span className="text-xs text-slate-500">聚合:</span><Badge color="purple">{repo.aggregate}</Badge></>)}</div>
+          <div className="flex gap-2"><Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge><Badge color="gray">仓储（Repository）</Badge>{(() => { const agg = repositoryAggregateOf(repo.relationships); return agg ? (<><span className="text-xs text-slate-500">聚合:</span><Badge color="purple">{agg}</Badge></>) : null })()}</div>
           {repo.operations && repo.operations.length > 0 && (
             <Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">操作</h3>
               <ul className="space-y-1">{repo.operations.map((op, j) => (<li key={j} className="text-sm font-mono text-slate-700 flex gap-2"><span>•</span>{op}</li>))}</ul>
@@ -1372,6 +1396,53 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
           <div className="flex gap-2"><Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge><Badge color="gray">领域事件（Domain Event）</Badge></div>
           {evt.published_when && (<Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-1">何时发布</h3><p className="text-sm text-slate-700">{evt.published_when}</p></Card>)}
           {evt.payload && evt.payload.length > 0 && (<Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">载荷</h3><FieldsTable fields={evt.payload} /></Card>)}
+        </div>
+      )
+    }
+
+    case 'app-agg-entity': {
+      const idx3 = indexParts.length > 2 ? parseInt(indexParts[2]) : -1
+      const app = apps[idx]
+      const agg = app?.domain_model?.aggregates?.[idx2]
+      const entity = agg?.entities?.[idx3]
+      if (!entity) return <Empty />
+      const isRoot = entity.name === agg!.root
+      const roles = rolesOf(entity.relationships)
+      const be = businessEntityOf(entity.relationships)
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-slate-800">{isRoot ? '★' : '▪'} {entity.name}</h2>
+          <div className="flex gap-2 items-center flex-wrap">
+            <Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge>
+            <Badge color="purple"><Link name={agg!.name || ''} model={model} onNavigate={onNavigate} /></Badge>
+            <Badge color="gray">{isRoot ? '聚合根（Aggregate Root）' : '聚合内实体'}</Badge>
+            {be && (<><span className="text-xs text-slate-500">业务实体:</span><Badge color="purple"><Link name={be} model={model} onNavigate={onNavigate} /></Badge></>)}
+            {roles.length > 0 && (<><span className="text-xs text-slate-500">扮演角色:</span>{roles.map((r, k) => <Badge key={k} color="amber">{r}</Badge>)}</>)}
+          </div>
+          {entity.fields && entity.fields.length > 0 && (<Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">字段</h3><FieldsTable fields={entity.fields} /></Card>)}
+        </div>
+      )
+    }
+
+    case 'app-agg-vo': {
+      const idx3 = indexParts.length > 2 ? parseInt(indexParts[2]) : -1
+      const app = apps[idx]
+      const agg = app?.domain_model?.aggregates?.[idx2]
+      const vo = agg?.value_objects?.[idx3]
+      if (!vo) return <Empty />
+      const roles = rolesOf(vo.relationships)
+      const be = businessEntityOf(vo.relationships)
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-slate-800">◇ {vo.name}</h2>
+          <div className="flex gap-2 items-center flex-wrap">
+            <Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge>
+            <Badge color="purple"><Link name={agg!.name || ''} model={model} onNavigate={onNavigate} /></Badge>
+            <Badge color="gray">聚合内值对象</Badge>
+            {be && (<><span className="text-xs text-slate-500">业务实体:</span><Badge color="purple"><Link name={be} model={model} onNavigate={onNavigate} /></Badge></>)}
+            {roles.length > 0 && (<><span className="text-xs text-slate-500">扮演角色:</span>{roles.map((r, k) => <Badge key={k} color="amber">{r}</Badge>)}</>)}
+          </div>
+          {vo.fields && vo.fields.length > 0 && (<Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">字段</h3><FieldsTable fields={vo.fields} /></Card>)}
         </div>
       )
     }

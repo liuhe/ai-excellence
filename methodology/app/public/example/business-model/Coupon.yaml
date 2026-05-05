@@ -14,3 +14,9 @@
   - 内容: 兑换码格式XXXX-XXXX-XXXX-XXXX，字符集排除易混淆字符(I/O/0/1)
     关联属性: code
     关联用例: [manager-server.创建套餐]
+relationships:
+  - kind: associates
+    target: Account
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: boundUsername

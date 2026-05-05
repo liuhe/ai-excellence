@@ -15,3 +15,9 @@
     - from: Pending
       to: Paid
       trigger: 平台运营确认打款
+relationships:
+  - kind: associates
+    target: Teacher
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: teacherId

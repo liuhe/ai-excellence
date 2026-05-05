@@ -90,14 +90,8 @@ entities:                                                    # overview list —
   - name: <PascalCase>
     summary: <one-line description>
     detail: ./business-model/<Entity>.yaml                  # path to the detail file
-relationships:
-  - from: <entity name>                                     # the "whole" for composition
-    to: <entity name>                                       # the "part" for composition
-    type: one-to-one | one-to-many | many-to-one | many-to-many
-    relation: association | composition                     # optional, default association; composition = `to` 是值类型/嵌入式部件，无独立身份与生命周期
-    via: <field name>                                       # optional
-    note: <string>                                          # optional
 diagram: ./business-model/er.svg                            # optional
+# 注意：cross-entity 关系不写在这里，写在每个 entity detail 文件的 `relationships:` 段
 ```
 
 #### business-model/&lt;Entity&gt;.yaml
@@ -105,7 +99,14 @@ diagram: ./business-model/er.svg                            # optional
 ```yaml
 name: <PascalCase>
 archetype: moment-interval | role | party-place-thing | description   # optional, 4-color modeling
-implements: [<RoleName>, ...]                                           # optional, 实现的 Role（仅 archetype=role 的实体可作为目标）
+relationships:                                                          # optional, 出向关系（统一关系模型，见 schema NOTE 12）
+  - kind: depends-on | implements | associates | composition
+    target: <name>                                                      # 目标构造块名
+    target_kind: business-entity | role | aggregate | ...               # optional, 跨类型同名时必填
+    bidirectional: true                                                 # optional, 仅 associates 可设
+    cardinality: one-to-one | one-to-many | many-to-one | many-to-many  # optional, associates / composition
+    via: <field name>                                                   # optional
+    note: <string>                                                      # optional
 fields:
   - <fieldName>: "<Type>, <description>"
 notes: <string>                                             # optional
@@ -178,44 +179,65 @@ pages:                                                       # frontend / client
         url: <string>
     display_mappings: [<natural language>, ...]             # optional
 domain_model:                                                # OPTIONAL — DDD 应用领域模型；简单 app 通常不需要
-  roles:                                                     # optional — 应用层接口/角色定义
+  # 所有构造块都可有 `relationships:` 段表达出向关系；统一关系模型见 schema NOTE 12
+  # 关系格式：[{kind, target, target_kind?, bidirectional?, cardinality?, via?, note?}]
+
+  roles:
     - name: <PascalCase>                                     # e.g., MessageDecoder
-      methods: [<string>, ...]                               # 操作签名
+      methods: [<string>, ...]
+      relationships: [<Relationship>, ...]                   # optional
       notes: <string>                                        # optional
   aggregates:
     - name: <PascalCase>
-      business_entity: <BusinessEntityName>                  # optional — 跨层映射：实现的业务实体
-      implements: [<RoleName>, ...]                          # optional — 本聚合实现的 Role（本 app 的 roles）
-      root: <RootEntityName>
-      entities:                                              # 聚合内的实体（除根之外）
-        - name: <PascalCase>
-          implements: [<RoleName>, ...]                      # optional
+      root: <RootEntityName>                                 # 必须引用下面 entities[] 中已定义的某个实体名；
+                                                             # 不在此声明字段；不能引用业务实体（业务实体只通过下面 relationships 跨层映射）
+      relationships:                                         # optional — e.g., 实现 BusinessEntity / Role / 关联其他 Aggregate
+        - kind: implements                                   # 跨层映射示例：实现业务实体
+          target: <BusinessEntityName>
+          target_kind: business-entity
+        - kind: implements                                   # 接口实现示例
+          target: <RoleName>
+          target_kind: role
+      entities:                                              # 本聚合的所有实体，**包含 root**（root 是其中一员）
+        - name: <RootEntityName>                             # root entity 在这里定义（含字段）
+          fields:
+            - <fieldName>: "<Type>, <description>"
+        - name: <PascalCase>                                 # 聚合内其他实体
+          relationships: [<Relationship>, ...]               # optional
           fields:
             - <fieldName>: "<Type>, <description>"
       value_objects:
         - name: <PascalCase>
-          implements: [<RoleName>, ...]                      # optional
+          relationships: [<Relationship>, ...]               # optional
           fields:
             - <fieldName>: "<Type>, <description>"
-      invariants: [<natural language>, ...]                  # 聚合不变量
+      invariants: [<natural language>, ...]
       notes: <string>                                        # optional
   value_objects:                                             # optional — 跨聚合共享的 VO
     - name: <PascalCase>
-      implements: [<RoleName>, ...]                          # optional
+      relationships: [<Relationship>, ...]                   # optional
       fields:
         - <fieldName>: "<Type>, <description>"
   repositories:                                              # optional
     - name: <PascalCase>Repository
-      aggregate: <AggregateName>
-      operations: [<string>, ...]                            # 例如 ["findById(id)", "save(account)"]
-  domain_services:                                           # optional — 不属于单一聚合的领域逻辑
+      relationships:                                         # required: 至少一条 composition 指向其管理的 Aggregate
+        - kind: composition
+          target: <AggregateName>
+          target_kind: aggregate
+      operations: [<string>, ...]
+  domain_services:                                           # optional
     - name: <PascalCase>Service
+      relationships:                                         # optional — e.g., depends-on Repository / Service
+        - kind: depends-on
+          target: <RepositoryName>
+          target_kind: repository
       operations: [<string>, ...]
       notes: <string>                                        # optional
   domain_events:                                             # optional
-    - name: <PascalCase>Event                                # 例如 AccountActivated
-      published_when: <string>                               # 何时发布
-      payload:                                               # optional
+    - name: <PascalCase>Event
+      published_when: <string>
+      relationships: [<Relationship>, ...]                   # optional, e.g., 关联 publisher Aggregate/Service
+      payload:
         - <fieldName>: "<Type>, <description>"
 ```
 
@@ -293,7 +315,7 @@ Traceability: **page → app use case → system use case → business use case*
 - 内容：本 app 的代码层结构如何实现业务概念；每个 app 一份。受众：该 app 的开发者。
 - 写在 `applications/<app>.yaml` 的 `domain_model:` 段（可选，简单 frontend / proxy / external 通常不需要）。
 - 用 DDD 构造块：
-  - **Aggregate（聚合）**：根实体 + 内含实体 + VO + 事务边界 + 不变量。`business_entity: <BusinessEntityName>` 跨层映射到业务实体；`implements: [<RoleName>...]` 列出本聚合扮演的本 app 内角色。
+  - **Aggregate（聚合）**：根实体 + 内含实体 + VO + 事务边界 + 不变量。用 `relationships` 段表达：`{kind: implements, target: <BusinessEntity>, target_kind: business-entity}` 跨层映射；`{kind: implements, target: <Role>, target_kind: role}` 实现本 app 内 Role。
   - **Value Object（值对象）**：不可变，按值相等。可在聚合内或跨聚合共享。
   - **Repository（仓储）**：对聚合的集合抽象。
   - **Domain Service（领域服务）**：不属单一聚合的领域逻辑。

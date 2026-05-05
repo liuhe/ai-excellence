@@ -102,13 +102,8 @@ business_model_yaml_schema:
       summary: string                       # one-line description
       detail: string                        # path to detail file, e.g., ./business-model/Account.yaml
 
-  relationships:                             # cross-entity associations
-    - from: string                          # source entity name (the "whole" for composition)
-      to: string                            # target entity name (the "part" for composition)
-      type: one-to-one | one-to-many | many-to-one | many-to-many
-      relation: association | composition   # optional, default association; see SCHEMA NOTE 13
-      via: string                           # optional, the field that holds the reference
-      note: string                          # optional, non-obvious semantics
+  # 注意：cross-entity 关系**不再放这里**，改为在每个 entity detail 文件里用 `relationships:` 段
+  # 表达（统一关系模型，见 SCHEMA NOTE 12）。viewer 加载所有 detail 文件后聚合出关系网络。
 
   diagram: string                           # optional, path to SVG (e.g., ./business-model/er.svg)
 
@@ -124,9 +119,9 @@ business_entity_detail_yaml_schema:
   archetype: moment-interval | role | party-place-thing | description
                                             # optional, 4-color modeling 类型；详见 SCHEMA NOTE 13
 
-  implements: string[]                       # optional, 本实体实现的 Role 名（业务模型内 archetype=role 的实体）
-                                            #   e.g., Person 实体 implements: [Customer, Employee]
-                                            #   仅 archetype=role 的实体可作为目标；详见 SCHEMA NOTE 16
+  relationships: <Relationship[]>           # optional — 本实体出向的关系（见 SCHEMA NOTE 12）
+                                            #   每条关系含 kind（depends-on/implements/associates/composition）+
+                                            #   target + target_kind 等字段；只记主动方，被动方由 viewer 推导
 
   fields:                                    # required, compact format
     - field_name: "Type, description"       # e.g., id: "Long, auto-increment primary key"
@@ -226,24 +221,29 @@ application_detail_yaml_schema:
 
   domain_model:                              # OPTIONAL — 该 app 的 DDD 应用领域模型（FILE 5 的可选段，详见 SCHEMA NOTE 15）
                                             # 简单 frontend / proxy / external 类 app 通常不需要；有内核逻辑的 backend / client 才填
+                                            # 所有构造块都可有 `relationships:` 段表达出向关系，统一关系模型见 SCHEMA NOTE 12
     roles:                                  # optional — 应用层接口/角色定义（DDD 中显式建模"契约"）
       - name: string                        # PascalCase, e.g., MessageDecoder
         methods: string[]                   # 暴露的操作签名，e.g., ["decode(bytes) -> Message"]
+        relationships: <Relationship[]>     # optional
         notes: string                       # optional
 
     aggregates:                              # 聚合：根实体 + 内含实体 + VO + 不变量
-      - name: string                        # PascalCase
-        business_entity: string             # optional — 跨层映射：实现的业务实体名（business-model 里的 entity）
-        implements: string[]                # optional — 本聚合实现的 Role（本 app 的 roles 之一）
-        root: string                        # 聚合根实体名
-        entities:                            # 聚合内的实体（除根之外）
+      - name: string                        # PascalCase, e.g., AccountAggregate
+        root: string                        # 必须引用 entities[] 中已定义的某个实体名（本层实体）。
+                                            # 不在此声明字段——字段在被引用的 entities[] 项里。
+                                            # 不能引用业务实体（业务实体不属于本层），跨层映射通过下面的
+                                            # relationships: [{kind: implements, target_kind: business-entity}] 表达。
+                                            # 详见 SCHEMA NOTE 17。
+        relationships: <Relationship[]>     # optional — e.g., 实现 Role / 关联其他 Aggregate / 跨层映射 BusinessEntity
+        entities:                            # 本聚合定义的所有实体（**包含 root**，root 是其中一员）
           - name: string                    # PascalCase
-            implements: string[]            # optional — 实体级实现的 Role
+            relationships: <Relationship[]> # optional
             fields:
               - field_name: "Type, description"
         value_objects:                       # 聚合内的 VO
           - name: string
-            implements: string[]            # optional — VO 级实现的 Role
+            relationships: <Relationship[]> # optional
             fields:
               - field_name: "Type, description"
         invariants: string[]                # 聚合不变量（自然语言）
@@ -251,25 +251,39 @@ application_detail_yaml_schema:
 
     value_objects:                          # optional — 跨聚合共享的 VO
       - name: string
-        implements: string[]                # optional — 实现的 Role
+        relationships: <Relationship[]>     # optional
         fields:
           - field_name: "Type, description"
 
     repositories:                            # optional — 仓储抽象
       - name: string                        # 例如 AccountRepository
-        aggregate: string                   # 对应的聚合名
+        relationships: <Relationship[]>     # required — 至少一条 kind=composition 指向其管理的 Aggregate
         operations: string[]                # 例如 ["findById(id)", "save(account)", "findActive()"]
 
     domain_services:                         # optional — 领域服务（不属于单一聚合的逻辑）
       - name: string                        # 例如 PriceCalculator
+        relationships: <Relationship[]>     # optional — e.g., depends-on Repository / Service
         operations: string[]
         notes: string                       # optional
 
     domain_events:                           # optional — 领域事件
       - name: string                        # 例如 AccountActivated
         published_when: string              # 何时发布
+        relationships: <Relationship[]>     # optional — e.g., associates publisher Aggregate/Service
         payload:                             # optional
           - field_name: "Type, description"
+
+# === Relationship 类型定义 ===
+relationship_schema:
+  kind: depends-on | implements | associates | composition  # 详见 SCHEMA NOTE 12
+  target: string                          # 目标构造块名
+  target_kind: business-entity | role | aggregate | value-object | repository | domain-service | domain-event
+                                          # optional, 帮助消歧（同名跨类型时必须提供）
+  bidirectional: boolean                  # optional, default false; 仅 associates 可设 true
+  cardinality: one-to-one | one-to-many | many-to-one | many-to-many
+                                          # optional, 一般用于 associates / composition
+  via: string                             # optional, the field name carrying the reference
+  note: string                            # optional
 
 # =============================================================================
 # FILE 6: deployment.yaml — Deployment View
@@ -416,23 +430,54 @@ deployment_yaml_schema:
 #    a client. If removing the backend leaves the user with nothing, it's a
 #    frontend.
 
-# 12. RELATION KIND — association vs composition
+# 12. RELATIONSHIPS — 统一关系模型（业务模型与应用领域模型共用）
 #
-#    `relation` 描述结构关系性质，与 `type`（基数）正交：
-#      - association（默认）：两个独立实体之间的关联。各自有身份与生命周期，仅通过引用相连。
-#      - composition：from 整体包含 to 部件。to 没有独立身份，生命周期完全依赖 from——
-#        from 删除时 to 也消失。在实现上常表现为：to 是值类型 / 嵌入式 struct / 内联 JSON，
-#        没有独立存储表，没有独立 ID。
+#    每个构造块（business entity / aggregate / VO / repository / service / event / role）
+#    都可有可选的 `relationships:` 段，列出本构造块**出向**的关系。每条关系：
 #
-#    判断准则：如果 to 实体单独存在毫无意义、必须依附 from 才有价值 → composition；
-#    否则 → association。
+#      - kind: depends-on | implements | associates | composition
+#      - target: <name>                       目标构造块名
+#      - target_kind: business-entity | role | aggregate | value-object | repository | domain-service | domain-event
+#                                             optional, 跨类型同名时必填以消歧
+#      - bidirectional: true                  optional, 仅 associates 可设；表"双向引用"
+#      - cardinality: one-to-one | one-to-many | many-to-one | many-to-many
+#                                             optional, 一般用于 associates / composition
+#      - via: <field name>                    optional, 持有引用的字段
+#      - note: <string>                       optional
 #
-#    示例：
-#      - User → Address（用户家庭地址作为内联字段）：composition
-#      - Order → User（订单关联下单用户）：association
-#      - DirectLink → ProxyConfig（代理配置嵌入在直连配置里）：composition
+#    四种 kind 的语义：
 #
-#    Viewer 渲染：composition 在 from 端绘制 UML 实心菱形；association 仅箭头。
+#      depends-on（依赖）：A 临时用 B 完成工作，不持有 B 的引用。
+#        例：DomainService 依赖 Repository（调用其方法即用即弃）；
+#            Service 依赖另一个 Service。
+#        视觉：虚线 + 普通箭头。
+#
+#      implements（实现）：A 实现 B 的契约（接口 / Role）；A 必须满足 B 的方法签名。
+#        例：AccountAggregate implements PackageActivationTarget（应用层 Role）；
+#            Person implements Customer（业务模型 Role 实体）；
+#            AccountAggregate implements Account（跨层映射：应用聚合实现业务实体）。
+#        视觉：虚线 + UML 空心三角箭头（realization）。
+#
+#      associates（关联）：A 持有 B 的引用（字段、ID 引用）；可单向或双向。
+#        例：Order associates Customer（订单关联下单用户，单向）；
+#            Peer associates DirectLink（peer 引用其直连配置）。
+#        视觉：实线 + 普通箭头；bidirectional=true 时双端无箭头。
+#
+#      composition（聚合 / 强所有权）：A 拥有 B；B 的生命周期依附于 A——A 删除则 B 消失。
+#        实现上常表现为值类型 / 嵌入式 struct / 内联 JSON，B 没有独立 ID 或存储表。
+#        例：DirectLink composition ProxyConfig（代理配置嵌入直连配置）；
+#            Repository composition Aggregate（仓储管理聚合的生命周期）。
+#        视觉：实线 + UML 实心菱形（在源端）。
+#
+#    存储约定：
+#      - 有向关系（depends-on / implements / composition）：记在主动方
+#      - 双向关联（associates with bidirectional=true）：记一边即可，viewer 推导另一边
+#      - 单向关联（associates）：记在持有引用的一方
+#
+#    Viewer 责任：
+#      - 加载所有构造块后，建立"出向 + 入向"的双向索引
+#      - 渲染时按 kind 用不同样式
+#      - detail 页面同时展示主动出向关系和被动入向关系（"被谁依赖 / 被谁实现 / 被谁关联"）
 
 # 13. ENTITY ARCHETYPE — 四色建模（Peter Coad）
 #
@@ -506,43 +551,58 @@ deployment_yaml_schema:
 #        * vchat-client 的 Peer = 富 Aggregate（含 RouteState VO + 看门狗 Service）
 #      - 也可以"不实现"——某 app 根本用不到某业务实体就不出现
 #
-#    跨层映射：domain_model.aggregates[].implements 字段指向业务实体名，
+#    跨层映射：app domain_model 的 aggregate 用 `relationships: [{kind: implements,
+#    target: <BusinessEntityName>, target_kind: business-entity}]` 表达"本 app 在应用层实现了某业务实体"——
 #    让 viewer 可跨视图跳转、让 AI 推理时能关联两层。
+#
+#    重要约束：业务实体**不属于**本 app 的领域模型层——
+#      - 业务实体不能作为 aggregate.root（root 必须引用本层 entities[]，详见 NOTE 17）
+#      - 业务实体不画进应用领域模型图，只在 aggregate / role 详情面板里以"实现的业务实体"形式展示
 #
 #    判断准则：
 #      - 写一段东西在业务模型 vs 应用领域模型？看受众。给业务方/跨工程读 → 业务模型；给本 app 开发者
 #        理解代码结构 → 应用领域模型。
-#      - 概念名相同、但语义不同？两边都写，用 implements 字段连接。
+#      - 概念名相同、但语义不同？两边都写，用 implements 关系连接。
 
-# 16. IMPLEMENTS — 角色与接口的"实现"关系（双层共用）
+# 17. AGGREGATE ROOT —— 引用语义而非定义语义
 #
-#    "实现"（implements）= UML 中的 realization：A 实现 B 的契约。两层都用：
+#    aggregate.root 是一个**名称引用**，指向 aggregate.entities[] 中已经定义的某个实体。
+#    它不引入新名字，不声明字段，不能跨层引用业务实体。
 #
-#    业务模型层：
-#      - archetype=role 的实体本质是接口/契约（如 `Customer`, `Employee`, `MessageDecoder`）
-#      - 其他 archetype 的实体（PPT / MI / Description）可声明 `implements: [<RoleName>...]`
-#        e.g., Person 实体 implements: [Customer, Employee]
-#      - 一个 PPT 可同时扮演多个 Role（多重身份）；一个 Role 可被多个 PPT 实现
-#      - 严格：implements 的目标必须是同 business model 内 archetype=role 的实体
+#    正确写法：
+#      aggregates:
+#        - name: AccountAggregate
+#          root: Account                         # 引用下面 entities 中的 Account
+#          entities:
+#            - name: Account                     # 在本层定义 Account 及其字段
+#              fields:
+#                - id: "Long, primary key"
+#                - status: "AccountStatus, ..."
+#            - name: Package                     # 聚合内其他实体
+#              fields: [...]
+#          relationships:
+#            - kind: implements                  # 跨层映射：本 app 的 Account 实现业务实体 Account
+#              target: Account
+#              target_kind: business-entity
 #
-#    应用领域模型层：
-#      - app domain_model 可定义 `roles:` 段（DDD 中没有现成构造块对应"接口"，但常需显式建模契约）
-#        - 每个 role 含 name + methods（操作签名）
-#      - aggregate / aggregate.entities / aggregate.value_objects / 顶层 value_objects 都可声明
-#        `implements: [<RoleName>...]`，目标是本 app 的 roles
-#      - 跨 app 的接口实现：暂不支持；如需共享接口可在 business-model 用 archetype=role 表达
+#    错误反模式：
+#      a) root 起新名字（"LocalSession"）但 entities 里没有 LocalSession ——
+#         无处声明字段、字段从哪来？读起来歧义。
+#      b) root: <BusinessEntityName> 但 entities 里没该实体 ——
+#         相当于把业务实体当本层实体，跨层；本层失去显式定义。
+#      c) 担心 root 没字段就再起一个同名 VO 把字段塞进去 —— 重复声明、错位。
 #
-#    跨层映射（不要混淆）：
-#      - 业务模型中的 implements: [Role]            - 跨 PPT/MI/Desc 与 Role 的接口关系
-#      - 应用领域模型中的 implements: [Role]        - 跨 Aggregate/VO/Entity 与本 app Role 的接口关系
-#      - 应用领域模型中的 business_entity: <Entity> - 跨"应用层 → 业务层"的实现映射，**不是同义词**
-#        e.g., AccountAggregate 用 business_entity: Account 表示这个聚合实现的是哪个业务实体；
-#              AccountAggregate 用 implements: [BillingTarget] 表示该聚合在本 app 内扮演什么角色
+#    Viewer 责任：
+#      - aggregate 详情中显示 root 名 + 链接到 entities[] 中对应实体；
+#      - 应用领域模型图中，aggregate 节点直接以 root entity 名呈现（不再单独画 root 子节点 / 业务实体节点）；
+#      - 校验：若 root 不在 entities[].name 集合中，标记为 schema error。
 #
-#    Viewer：在 ER 图与领域模型图上用 UML realization 风格（虚线 + 空心三角箭头）渲染 implements 关系；
-#    Role 节点用区别于其他构造块的视觉样式。
+#    字段同步策略：
+#      - 应用层的 root entity 与对应业务实体常常字段相同——但本层独立声明，
+#        以便表达"应用层投影"（增减字段、运行时状态、技术性字段）。
+#      - 字段可能与业务实体同步，也可能裁剪 / 增补；具体看应用需要。
 
-# 17. EXTENSIBILITY
+# 16. EXTENSIBILITY
 #
 #    Future sections (each as their own view file at the top level):
 #    - security.yaml: cross-cutting auth/authz

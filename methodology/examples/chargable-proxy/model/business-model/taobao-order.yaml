@@ -44,3 +44,22 @@ rules:
     field: retryCount
     related_use_cases:
       - manager-server.AutoFulfillOrder
+relationships:
+  - kind: associates
+    target: Account
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: accountId
+    note: Links the Taobao order to the provisioned proxy account
+  - kind: associates
+    target: RedemptionCode
+    target_kind: business-entity
+    cardinality: one-to-one
+    via: redemptionCodeId
+    note: Optional — redemption code generated for the buyer to use for renewals
+  - kind: associates
+    target: TaobaoSku
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: skuId
+    note: Records which SKU was ordered, used to look up package spec during fulfillment

@@ -22,39 +22,4 @@ entities:
     summary: 教师月度结算单 + 状态机（Pending/Paid）
     detail: ./business-model/Settlement.yaml
 
-relationships:
-  - from: Course
-    to: Teacher
-    type: many-to-one
-    via: teacherId
-  - from: TimeSlot
-    to: Teacher
-    type: many-to-one
-    via: teacherId
-  - from: Booking
-    to: Student
-    type: many-to-one
-    via: studentId
-  - from: Booking
-    to: Course
-    type: many-to-one
-    via: courseId
-  - from: Booking
-    to: TimeSlot
-    type: one-to-one
-    via: timeSlotId
-    备注: 一个时间槽只能被一个预约占用
-  - from: Review
-    to: Booking
-    type: one-to-one
-    via: bookingId
-  - from: Review
-    to: Teacher
-    type: many-to-one
-    via: teacherId
-  - from: Settlement
-    to: Teacher
-    type: many-to-one
-    via: teacherId
-
 diagram: ./business-model/er.svg

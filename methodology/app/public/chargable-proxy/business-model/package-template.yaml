@@ -11,3 +11,10 @@ notes: >
   Defines the specification for a class of packages. Both TaobaoSku and RedemptionCode
   reference a PackageTemplate to determine what Package to create upon fulfillment.
   Admin manages templates independently; multiple SKUs or code batches can share one template.
+relationships:
+  - kind: associates
+    target: ProxyTier
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: proxyTierId
+    note: Which speed tier packages created from this template will use

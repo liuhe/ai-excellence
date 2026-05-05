@@ -88,7 +88,6 @@ export interface StakeholderInterest {
 
 export interface SystemView {
   data_models?: DataModel[];           // = 业务模型实体（business-model）；保留旧字段名避免 viewer 大改
-  relationships?: Relationship[];
   businessModelDiagram?: string;       // business-model.yaml 的 diagram 字段（业务模型 ER 图）
   overview?: OverviewEdge[];
   topologyDiagram?: string;
@@ -96,7 +95,6 @@ export interface SystemView {
   docs?: Doc[];
   // Chinese keys
   数据模型?: DataModel[];
-  关系?: Relationship[];
   概览?: OverviewEdge[];
   子系统?: Application[];
   扩展文档?: Doc[];
@@ -108,8 +106,8 @@ export interface DataModel {
   name?: string;
   table_name?: string;
   archetype?: Archetype;
-  implements?: string[];           // 本业务实体实现的 Role 名（跨实体接口关系，archetype=role 的实体作为目标）
-  _sourceDir?: string;            // viewer-injected: detail YAML 所在目录绝对路径，用于 markdown 相对链接解析
+  relationships?: Relationship[];   // 出向关系（统一关系模型）
+  _sourceDir?: string;            // viewer-injected: detail YAML 所在目录绝对路径
   fields?: Record<string, string>[];
   notes?: string;
   state_machine?: StateMachine;
@@ -153,11 +151,23 @@ export interface Transition {
   trigger?: string;
 }
 
+export type RelationshipKind = 'depends-on' | 'implements' | 'associates' | 'composition';
+
+export type RelationshipTargetKind =
+  | 'business-entity'
+  | 'role'
+  | 'aggregate'
+  | 'value-object'
+  | 'repository'
+  | 'domain-service'
+  | 'domain-event';
+
 export interface Relationship {
-  from?: string;
-  to?: string;
-  type?: string;                                    // cardinality: one-to-one | one-to-many | ...
-  relation?: 'association' | 'composition';         // structural; default: association
+  kind?: RelationshipKind;
+  target?: string;
+  target_kind?: RelationshipTargetKind;
+  bidirectional?: boolean;        // only meaningful for kind=associates
+  cardinality?: string;           // one-to-one / one-to-many / many-to-one / many-to-many
   via?: string;
   note?: string;
 }
@@ -266,35 +276,36 @@ export interface Association {
 
 export interface AppAggregate {
   name?: string;
-  business_entity?: string;        // 跨层映射：实现的业务实体名（business-model 中的 entity）
-  implements?: string[];           // 本聚合实现的 Role 名（本 app 的 roles）
   root?: string;                   // 聚合根
-  entities?: { name?: string; implements?: string[]; fields?: Record<string, string>[] }[];
-  value_objects?: { name?: string; implements?: string[]; fields?: Record<string, string>[] }[];
+  relationships?: Relationship[];  // 出向关系
+  entities?: { name?: string; relationships?: Relationship[]; fields?: Record<string, string>[] }[];
+  value_objects?: { name?: string; relationships?: Relationship[]; fields?: Record<string, string>[] }[];
   invariants?: string[];
   notes?: string;
 }
 
 export interface AppValueObject {
   name?: string;
-  implements?: string[];
+  relationships?: Relationship[];
   fields?: Record<string, string>[];
 }
 
 export interface AppRole {
   name?: string;
   methods?: string[];
+  relationships?: Relationship[];
   notes?: string;
 }
 
 export interface AppRepository {
   name?: string;
-  aggregate?: string;
+  relationships?: Relationship[];   // expected: kind=composition, target_kind=aggregate
   operations?: string[];
 }
 
 export interface AppDomainService {
   name?: string;
+  relationships?: Relationship[];
   operations?: string[];
   notes?: string;
 }
@@ -302,6 +313,7 @@ export interface AppDomainService {
 export interface AppDomainEvent {
   name?: string;
   published_when?: string;
+  relationships?: Relationship[];
   payload?: Record<string, string>[];
 }
 

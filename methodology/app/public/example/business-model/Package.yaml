@@ -26,3 +26,9 @@
       to: Expired
       trigger: 当前时间超过 activateTime + effectiveDays（查询时计算）
   备注: Expired 是查询时计算的虚拟状态，不持久化到数据库
+relationships:
+  - kind: associates
+    target: Account
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: username

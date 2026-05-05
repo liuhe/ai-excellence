@@ -12,3 +12,14 @@
   - 内容: 每个Booking只能评价一次，且只有Completed状态的Booking才能评价
     关联属性: bookingId
     关联用例: [course-server.提交评价]
+relationships:
+  - kind: associates
+    target: Booking
+    target_kind: business-entity
+    cardinality: one-to-one
+    via: bookingId
+  - kind: associates
+    target: Teacher
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: teacherId

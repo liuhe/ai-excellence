@@ -16,23 +16,4 @@ entities:
     summary: 代理实例注册信息
     detail: ./business-model/ProxyInstance.yaml
 
-relationships:
-  - from: Package
-    to: Account
-    type: many-to-one
-    via: username
-  - from: Coupon
-    to: Account
-    type: many-to-one
-    via: boundUsername
-    备注: 绑定后关联，未绑定时为空
-  - from: Request
-    to: ProxyInstance
-    type: many-to-one
-    via: proxyInstanceId
-  - from: Request
-    to: Account
-    type: many-to-one
-    via: username
-
 diagram: ./business-model/er.svg

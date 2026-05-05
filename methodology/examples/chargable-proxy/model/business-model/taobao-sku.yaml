@@ -21,3 +21,10 @@ rules:
   - content: Admin must configure SKU mappings before auto-fulfillment can work; orders with unmapped SKUs are flagged as DeliveryFailed
     related_use_cases:
       - manager-server.AutoFulfillOrder
+relationships:
+  - kind: associates
+    target: PackageTemplate
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: packageTemplateId
+    note: Resolves Taobao SKU to the package specification to create

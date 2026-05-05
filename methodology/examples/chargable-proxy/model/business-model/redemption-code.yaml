@@ -26,3 +26,16 @@ rules:
   - content: A code can only be redeemed once; concurrent redemption attempts must be handled atomically
     related_use_cases:
       - manager-server.RedeemCode
+relationships:
+  - kind: associates
+    target: Package
+    target_kind: business-entity
+    cardinality: one-to-one
+    via: packageId
+    note: The package created when this code was redeemed; nullable until redemption
+  - kind: associates
+    target: PackageTemplate
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: packageTemplateId
+    note: Determines what Package to create when the code is redeemed

@@ -25,3 +25,9 @@
     - from: Booked
       to: Cancelled
       trigger: 学生或教师取消预约（开课前24小时以上）
+relationships:
+  - kind: associates
+    target: Teacher
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: teacherId

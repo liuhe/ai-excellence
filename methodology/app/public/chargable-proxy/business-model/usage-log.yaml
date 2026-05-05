@@ -9,3 +9,9 @@ fields:
 notes: >
   Records individual proxy request traffic for auditing and analytics.
   The auth-proxy reports usage in batches to manager-server for efficiency.
+relationships:
+  - kind: associates
+    target: Package
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: packageId

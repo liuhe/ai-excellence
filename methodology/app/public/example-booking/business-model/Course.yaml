@@ -22,3 +22,9 @@
     - from: Archived
       to: Published
       trigger: 教师重新上架
+relationships:
+  - kind: associates
+    target: Teacher
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: teacherId

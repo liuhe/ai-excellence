@@ -13,3 +13,14 @@
   - secChUa: String
   - tags: String, 标签(以|分隔)
   - readBytes: long, 已读取字节数
+relationships:
+  - kind: associates
+    target: ProxyInstance
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: proxyInstanceId
+  - kind: associates
+    target: Account
+    target_kind: business-entity
+    cardinality: many-to-one
+    via: username
