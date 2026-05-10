@@ -112,7 +112,7 @@ function buildTree(model: Model): TreeNode[] {
             children: [
               { id: `app-trace:${i}`, label: '追溯链路', icon: '↳' },
               ...(hasDomainModel ? [{
-                id: `app-domain:${i}`, label: '应用领域模型', icon: '🧱',
+                id: `app-domain:${i}`, label: '领域模型', icon: '🧱',
                 children: [
                   ...(dm!.roles || []).map((r, j) => ({ id: `app-role:${i}:${j}`, label: r.name || '', icon: '🎭' })),
                   ...(dm!.aggregates || []).map((a, j) => {
@@ -136,8 +136,11 @@ function buildTree(model: Model): TreeNode[] {
                   ...(dm!.domain_events || []).map((e, j) => ({ id: `app-evt:${i}:${j}`, label: e.name || '', icon: '⚡' })),
                 ],
               }] : []),
-              ...pages.map((p, j) => ({ id: `app-page:${i}:${j}`, label: n(p, 'name', '名称'), icon: '📄' })),
-              ...(() => {
+              ...(pages.length > 0 ? [{
+                id: `app-pages:${i}`, label: '页面', icon: '🗂',
+                children: pages.map((p, j) => ({ id: `app-page:${i}:${j}`, label: n(p, 'name', '名称'), icon: '📄' })),
+              }] : []),
+              ...(ucs.length > 0 ? [(() => {
                 const aPkgMap = new Map<string, { uc: typeof ucs[0]; idx: number }[]>()
                 ucs.forEach((uc, j) => {
                   const pkg = uc.package || uc.分组 || ''
@@ -145,14 +148,14 @@ function buildTree(model: Model): TreeNode[] {
                   aPkgMap.get(pkg)!.push({ uc, idx: j })
                 })
                 const aHasPkgs = aPkgMap.size > 1 || (aPkgMap.size === 1 && !aPkgMap.has(''))
-                if (aHasPkgs) {
-                  return Array.from(aPkgMap.entries()).map(([pkg, items]) => ({
-                    id: `app-pkg:${i}:${pkg || '__ungrouped__'}`, label: pkg || 'Other', icon: '📦',
-                    children: items.map(({ uc, idx }) => ({ id: `app-uc:${i}:${idx}`, label: n(uc, 'name', '名称'), icon: '◦' })),
-                  }))
-                }
-                return ucs.map((uc, j) => ({ id: `app-uc:${i}:${j}`, label: n(uc, 'name', '名称'), icon: '◦' }))
-              })(),
+                const ucChildren: TreeNode[] = aHasPkgs
+                  ? Array.from(aPkgMap.entries()).map(([pkg, items]) => ({
+                      id: `app-pkg:${i}:${pkg || '__ungrouped__'}`, label: pkg || 'Other', icon: '📦',
+                      children: items.map(({ uc, idx }) => ({ id: `app-uc:${i}:${idx}`, label: n(uc, 'name', '名称'), icon: '◦' })),
+                    }))
+                  : ucs.map((uc, j) => ({ id: `app-uc:${i}:${j}`, label: n(uc, 'name', '名称'), icon: '◦' }))
+                return { id: `app-ucs:${i}`, label: '用例', icon: '🗂', children: ucChildren }
+              })()] : []),
             ],
           }
         }),

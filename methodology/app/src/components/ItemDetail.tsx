@@ -1163,7 +1163,7 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
       const aName = n(app, 'name', '名称')
       return (
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-slate-800">🧱 {aName} · 应用领域模型</h2>
+          <h2 className="text-2xl font-bold text-slate-800">🧱 {aName} · 领域模型</h2>
           <p className="text-sm text-slate-500">本 app 的 DDD 构造块（角色 / 聚合 / VO / 仓储 / 领域服务 / 领域事件）</p>
           <AppDomainDiagram app={app} />
           {dm.roles && dm.roles.length > 0 && (
