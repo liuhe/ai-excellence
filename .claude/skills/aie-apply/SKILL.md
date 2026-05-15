@@ -162,7 +162,7 @@ user_invocable: true
 
 ### 决定流程（自然语言，非参数）
 
-1. `/aie-apply` 启动时扫一遍 ai-excellence 当前提供的可选规范（当前只有 D）。
+1. `/aie-apply` 启动时扫一遍 ai-excellence 当前提供的可选规范（当前：D system-modeling、E task-workflow）。
 2. 对每项规范，读被管工程 CLAUDE.md "## ai-excellence 可选规范" 段，确定状态：**启用** → 推送/更新内容；**拒绝** → 跳过；**未决** → 进入第 3 步。
 3. **未决处理**：先看用户本次 `/aie-apply` 调用时是否在自然语言中表达了意图（例："给它启用建模"、"这个项目不要建模"）。
    - 表达了 → 直接按表达处理。
@@ -257,6 +257,32 @@ user_invocable: true
    - 未占用：`cd <aie-root>/methodology/app/ && npm run dev`（后台启动）
 5. 输出 viewer URL（`http://localhost:5173/`），提示用户在 viewer 中切换到本工程模型。
 ````
+
+### E. Task 工作流 skill 集
+
+**Feature 名称**：`task-workflow`
+
+把"任务全生命周期"工程化为状态机驱动的多 sub-agent 协作流程：init → design → design-review → implement → code-review → test → docs。每个有 verdict 的阶段拆成两个 phase：**exec**（observer，design-review / code-review 走 ensemble × 2 并行，test / docs 单 replica）+ **plan**（综合 verdict + 收口副作用）。状态外化到 `projects/<initiative>/tasks/<slug>/{goal.md, progress.txt, state.json, design.md, reviews/, test-runs/, docs-rounds/}`。配 `/loop /aie-task-next` 自治执行；plan phase 在 exec 成功后同一 firing 内紧接着拉起，避免 ScheduleWakeup 60s 等待被 phase 放大。
+
+**启用后推送内容 E-1**：把 ai-excellence 下列 9 个 skill 目录整体拷贝到受管工程对应路径（**直接逐字拷贝，不做占位符替换**）：
+
+| 源 | 目标 |
+|---|---|
+| `<aie-root>/.claude/skills/aie-task-init/SKILL.md` | `<target>/.claude/skills/aie-task-init/SKILL.md` |
+| `<aie-root>/.claude/skills/aie-task-next/SKILL.md` | `<target>/.claude/skills/aie-task-next/SKILL.md` |
+| `<aie-root>/.claude/skills/aie-task-plan/SKILL.md` | `<target>/.claude/skills/aie-task-plan/SKILL.md` |
+| `<aie-root>/.claude/skills/aie-task-design/SKILL.md` | `<target>/.claude/skills/aie-task-design/SKILL.md` |
+| `<aie-root>/.claude/skills/aie-task-design-review/SKILL.md` | `<target>/.claude/skills/aie-task-design-review/SKILL.md` |
+| `<aie-root>/.claude/skills/aie-task-implement/SKILL.md` | `<target>/.claude/skills/aie-task-implement/SKILL.md` |
+| `<aie-root>/.claude/skills/aie-task-code-review/SKILL.md` | `<target>/.claude/skills/aie-task-code-review/SKILL.md` |
+| `<aie-root>/.claude/skills/aie-task-test/SKILL.md` | `<target>/.claude/skills/aie-task-test/SKILL.md` |
+| `<aie-root>/.claude/skills/aie-task-docs/SKILL.md` | `<target>/.claude/skills/aie-task-docs/SKILL.md` |
+
+合规检查：9 个目标文件都存在且与源**逐字相同**（用 `diff -q` 比较）。任一不符即不合规，给 diff 让用户确认覆盖。
+
+**启用后推送内容 E-2**：无需 CLAUDE.md 段（task workflow 入口是 skill，不必常驻 prompt）。仅在 "## ai-excellence 可选规范" 段中以 `✅ task-workflow` 标记启用。
+
+集成入口：本 SKILL.md 中的 E 节描述（无独立 doc 文件，skill 自身即入口）。
 
 ## 执行步骤
 
