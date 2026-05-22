@@ -258,6 +258,16 @@ user_invocable: true
 5. 输出 viewer URL（`http://localhost:5173/`），提示用户在 viewer 中切换到本工程模型。
 ````
 
+**启用后推送内容 D-3**：把 ai-excellence 下的 model-build skill 整体拷贝到受管工程（**直接逐字拷贝，不做占位符替换**，与 task-workflow 同模式）：
+
+| 源 | 目标 |
+|---|---|
+| `<aie-root>/.claude/skills/model-build/SKILL.md` | `<target>/.claude/skills/model-build/SKILL.md` |
+
+合规检查：目标文件存在且与源**逐字相同**（`diff -q`）。不符即给 diff 让用户确认覆盖。
+
+该 skill 把 viewer + 本工程模型 build 成自包含静态站到 `<target>/docs/modeling/static/`，无需 dev server 即可浏览（双击或简单 HTTP server）。前置依赖：viewer 已支持 md 链接弹层渲染（不再依赖 dev-only 的 `markdownAsHtml` 插件）。
+
 ### E. Task 工作流 skill 集
 
 **Feature 名称**：`task-workflow`
