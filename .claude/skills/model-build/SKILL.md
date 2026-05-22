@@ -16,8 +16,9 @@ user_invocable: true
 
 1. **解析模型目录与工程名**：模型目录默认 `./docs/modeling/`（可在 CLAUDE.md "## 系统建模方法论" 段中调整），转换为绝对路径。工程名取被管工程根目录的 basename（与 `/model-view` 一致）。
 
-2. **注册到 viewer 的 public/**：
-   - 在 `<aie-root>/methodology/app/public/` 下创建软链 `<工程名> -> <模型目录绝对路径>`（已存在则跳过）。
+2. **注册到 viewer 的 public/**（与 `/model-view` 同语义，幂等；本 skill 应独立可跑，不假设 model-view 跑过）：
+   - 在 `<aie-root>/methodology/app/public/` 下创建软链 `<工程名> -> <模型目录绝对路径>`。
+     - 若软链已存在且指向相同路径，跳过；指向不同路径，警告用户后用新路径覆盖（避免 build 出错误内容）。
    - 在 `<aie-root>/methodology/app/public/models.json` 中确保有本工程的注册项（缺则追加）。
 
 3. **临时单工程化 models.json**：

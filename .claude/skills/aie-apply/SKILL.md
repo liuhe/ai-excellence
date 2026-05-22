@@ -250,7 +250,7 @@ user_invocable: true
 > 下面 `<aie-root>` 来自 `.claude/settings.local.json` 的 `aie_root` 字段。运行命令时先读出再替换。
 
 1. 解析模型目录：默认 `./docs/modeling/`，转换为绝对路径。
-2. 在 `<aie-root>/methodology/app/public/` 下创建软链 `<工程名> -> <模型目录绝对路径>`（已存在则跳过）。
+2. 在 `<aie-root>/methodology/app/public/` 下创建软链 `<工程名> -> <模型目录绝对路径>`。若已存在且指向相同路径则跳过；指向不同路径则警告用户后用新路径覆盖（避免 viewer 加载到错误内容）。
 3. 在 `<aie-root>/methodology/app/public/models.json` 中确保有本工程的注册项（缺则追加）。
 4. 检查端口 5173：`lsof -i :5173`。
    - 已占用：直接返回 viewer URL
