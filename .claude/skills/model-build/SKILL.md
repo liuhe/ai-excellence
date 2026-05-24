@@ -21,31 +21,41 @@ user_invocable: true
      - 若软链已存在且指向相同路径，跳过；指向不同路径，警告用户后用新路径覆盖（避免 build 出错误内容）。
    - 在 `<aie-root>/methodology/app/public/models.json` 中确保有本工程的注册项（缺则追加）。
 
-3. **临时单工程化 models.json**：
+3. **清空目标目录**（关键：必须在 build **之前**做）：
+   - `rm -rf <target>/docs/modeling/static`。
+   - 原因：模型目录通过 public/ 软链被 vite 解引用复制；若 `<target>/docs/modeling/` 里残留旧 `static/`，新 dist 会把它递归吸进 `dist/<工程名>/static/`，造成产物自包含旧产物的嵌套。
+
+4. **临时单工程化 models.json**：
    - 备份当前 `<aie-root>/methodology/app/public/models.json` 内容到内存变量 `originalModels`。
    - 把文件改写为 `["<工程名>"]`，让 build 出的静态站顶部选择器只显示本工程。
 
-4. **build viewer**：
+5. **build viewer**：
    - 在 `<aie-root>/methodology/app/` 跑 `npm install`（若缺 `node_modules`）+ `npm run build`。
-   - 产物在 `<aie-root>/methodology/app/dist/`，包含 `index.html`、`assets/`、`models.json`、以及通过 public/ 软链被 vite 烤入的 `<工程名>/` 模型目录。
+   - 产物在 `<aie-root>/methodology/app/dist/`，包含 `index.html`、`assets/`、`models.json`、以及通过 public/ 软链被 vite 烤入的所有公共目录（**包括 dcddp 出厂样板与其他 receiver**——下一步会剥离）。
 
-5. **还原 models.json**：把步骤 3 备份的 `originalModels` 写回 `<aie-root>/methodology/app/public/models.json`（不影响后续 `/model-view` 多工程列表）。
+6. **还原 models.json**：把步骤 4 备份的 `originalModels` 写回 `<aie-root>/methodology/app/public/models.json`（不影响后续 `/model-view` 多工程列表）。
 
-6. **同步到目标位置**：
-   - 清空+重建目标目录：`rm -rf <target>/docs/modeling/static && mkdir -p <target>/docs/modeling/static`（不要用 `static/*` glob —— zsh `nomatch` 会在空目录下报错，也漏点开头文件）。
+7. **剥离 dist 内非本工程的 public 目录**：
+   - vite 默认把整个 `public/` 拷进 dist，所以 dist 里会带其他工程模型（dcddp 样板、其他 receiver 软链）。逐字泄漏 + 体积膨胀。
+   - 列 `<aie-root>/methodology/app/public/` 的目录/软链项，凡名字非 `<工程名>` 的，从 `<aie-root>/methodology/app/dist/<name>/` 删掉。保留 `assets/`、`index.html`、`models.json`、`favicon.svg`、`icons.svg` 等顶层资源。
+   - 操作完后 dist 顶层应只剩：`assets/`、`favicon.svg`、`icons.svg`、`index.html`、`models.json`、`<工程名>/`。
+
+8. **同步到目标位置**：
+   - `mkdir -p <target>/docs/modeling/static`（步骤 3 已清空）。
    - `cp -R <aie-root>/methodology/app/dist/. <target>/docs/modeling/static/`。vite build 时 public/ 下的软链已被解引用，dist 内 `<工程名>/` 是实文件，无需 `-L`。
 
-7. **维护 .gitignore**：在 `<target>/.gitignore` 中确保有 `docs/modeling/static/` 一行（产物不入 git）。缺则追加。
+9. **维护 .gitignore**：在 `<target>/.gitignore` 中确保有 `docs/modeling/static/` 一行（产物不入 git）。缺则追加。
 
-8. **输出报告**：
+10. **输出报告**：
    - 静态站入口：`<target>/docs/modeling/static/index.html`
    - 推荐启动方式（任意目录、任意子路径都可）：`cd <target> && python -m http.server -d docs/modeling/static 8080`，浏览器开 `http://localhost:8080/?model=<工程名>`
    - viewer 已用 `base: './'` build，资源全走相对路径，所以 dist 整个目录可挂到任意 HTTP 子路径下。`file://` 双击在 Safari 通常可用、Chrome / Firefox 因 fetch CORS 拒绝 file:// 同源会失败——遇阻就改起 HTTP server。
 
 ## 失败兜底
 
-- 步骤 4 build 报错：保留 dist 旧产物不动；步骤 5 仍然要执行（恢复 models.json）；步骤 6 跳过；向用户报错并粘出 build 末尾输出。
-- 步骤 3-5 中途中断：用户重跑本 skill 时再次覆盖 models.json，最终状态以 `originalModels` 为准。
+- 步骤 5 build 报错：保留 dist 旧产物不动；步骤 6 仍然要执行（恢复 models.json）；步骤 7-8 跳过；向用户报错并粘出 build 末尾输出。
+- 步骤 4-6 中途中断：用户重跑本 skill 时再次覆盖 models.json，最终状态以 `originalModels` 为准。
+- 步骤 3 必须先于 build：若漏跑，dist 会把 `<target>/docs/modeling/static/` 嵌套进 `dist/<工程名>/static/`；产物可用但臃肿、含 stale 旧版本。重跑本 skill 即可纠正。
 
 ## 关键约束
 
