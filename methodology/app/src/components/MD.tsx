@@ -5,8 +5,9 @@ import { useOpenMD } from './MDModal'
 // 内联渲染 markdown：链接可点击 + 不引入块边距。
 // 适合 rule.content / notes / summary 这类文本字段。
 //
-// `basePath`（可选）：模型根的 dev server 绝对路径（如 `/vchat-p2p-native/`），
-// 用于解析 markdown 中的相对链接（如 `./vchat-client/foo.md` → `/vchat-p2p-native/vchat-client/foo.md`）。
+// `basePath`（可选）：模型根的相对 URL（如 `vchat-p2p-native/`），
+// 用于解析 markdown 中的相对链接（如 `./vchat-client/foo.md` → `vchat-p2p-native/vchat-client/foo.md`，
+// 最终由浏览器以当前 document URL 为基准 resolve）。
 // 约定：相对路径**相对模型根目录**，不是相对 YAML 文件位置。
 function resolveHref(href: string | undefined, basePath: string | undefined): string | undefined {
   if (!href) return href

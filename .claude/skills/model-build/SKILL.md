@@ -39,8 +39,8 @@ user_invocable: true
 
 8. **输出报告**：
    - 静态站入口：`<target>/docs/modeling/static/index.html`
-   - 启动方式：`cd <target> && python -m http.server -d docs/modeling/static 8080`，浏览器开 `http://localhost:8080/?model=<工程名>`
-   - **不要** `open file://...`：vite 默认 build base 为 `/`，`index.html` 引用 `/assets/...` 绝对路径，file:// 协议下 404。要支持 file:// 需 viewer 的 `vite.config.ts` 显式设 `base: './'` + 所有 fetch 走 `import.meta.env.BASE_URL`，当前未做。
+   - 推荐启动方式（任意目录、任意子路径都可）：`cd <target> && python -m http.server -d docs/modeling/static 8080`，浏览器开 `http://localhost:8080/?model=<工程名>`
+   - viewer 已用 `base: './'` build，资源全走相对路径，所以 dist 整个目录可挂到任意 HTTP 子路径下。`file://` 双击在 Safari 通常可用、Chrome / Firefox 因 fetch CORS 拒绝 file:// 同源会失败——遇阻就改起 HTTP server。
 
 ## 失败兜底
 

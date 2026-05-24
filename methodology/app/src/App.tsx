@@ -178,7 +178,9 @@ function resolveDetailPath(base: string, ref: string): string {
 }
 
 async function loadModel(modelName: string): Promise<Model> {
-  const base = `/${modelName}`
+  // 相对路径：resolve 时拿当前 document URL 当 base。
+  // 允许 dist 部署在任意子路径下；也避开 file:// 下 `/` 指向文件系统根目录的坑。
+  const base = modelName
   const [business, businessModelOverview, applicationsOverview] = await Promise.all([
     fetchYaml(`${base}/business.yaml`),
     fetchYaml(`${base}/business-model.yaml`),
@@ -292,7 +294,7 @@ function App() {
 
   // Fetch list of public models
   useEffect(() => {
-    fetch('/models.json')
+    fetch('models.json')
       .then(r => r.json())
       .then((list: string[]) => setPublicModels(list))
       .catch(() => {})

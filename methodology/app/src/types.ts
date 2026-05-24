@@ -3,7 +3,7 @@
 export interface Model {
   business: Business;
   system: SystemView;
-  basePath?: string;       // viewer-injected: 模型根的 dev server 绝对路径，如 `/vchat-p2p-native/`，用于 markdown 相对链接解析
+  basePath?: string;       // viewer-injected: 模型根的相对 URL（如 `vchat-p2p-native/`），用于 markdown 相对链接解析；浏览器会以当前 document URL 为基准 resolve
 }
 
 // === Business View ===

@@ -53,6 +53,11 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:2em 0}
 
 // https://vite.dev/config/
 export default defineConfig({
+  // 让 build 出的 index.html 引用 ./assets/... 而非 /assets/...，
+  // 这样 dist 整体可挂在任意子路径下（不只是 `/`）下的 HTTP server，
+  // 也尽量支持 file:// 双击打开（CORS 限制因浏览器而异）。
+  // dev 模式下 base: './' 不影响内部行为（vite dev server 仍走 /）。
+  base: './',
   plugins: [react(), markdownAsHtml()],
   server: {
     fs: {
