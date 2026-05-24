@@ -281,26 +281,28 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
             const sysHasPkgs = sysGrouped.size > 1 || (sysGrouped.size === 1 && !sysGrouped.has(''))
 
             const renderTable = (items: { uc: typeof ucs[0]; idx: number }[]) => (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-slate-400 uppercase border-b border-slate-100">
-                    <th className="py-1.5 pr-3">用例</th>
-                    <th className="py-1.5 pr-3">执行者</th>
-                    <th className="py-1.5">入口</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map(({ uc, idx: i }) => (
-                    <tr key={i} className="border-b border-slate-50">
-                      <td className="py-2 pr-3"><Link name={n(uc, 'name', '名称')} model={model} onNavigate={onNavigate} /></td>
-                      <td className="py-2 pr-3 text-slate-600"><Link name={n(uc, 'actor', '执行者')} model={model} onNavigate={onNavigate} /></td>
-                      <td className="py-2 text-slate-500 font-mono text-xs">
-                        {(uc.entry || uc.入口) ? <Link name={n(uc, 'entry', '入口')} model={model} onNavigate={onNavigate} /> : '—'}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-400 uppercase border-b border-slate-100">
+                      <th className="py-1.5 pr-3">用例</th>
+                      <th className="py-1.5 pr-3">执行者</th>
+                      <th className="py-1.5">入口</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {items.map(({ uc, idx: i }) => (
+                      <tr key={i} className="border-b border-slate-50">
+                        <td className="py-2 pr-3"><Link name={n(uc, 'name', '名称')} model={model} onNavigate={onNavigate} /></td>
+                        <td className="py-2 pr-3 text-slate-600"><Link name={n(uc, 'actor', '执行者')} model={model} onNavigate={onNavigate} /></td>
+                        <td className="py-2 text-slate-500 font-mono text-xs">
+                          {(uc.entry || uc.入口) ? <Link name={n(uc, 'entry', '入口')} model={model} onNavigate={onNavigate} /> : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )
 
             if (!sysHasPkgs) {
@@ -483,26 +485,28 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
           </div>
           <Card>
             <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">字段</h3>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-400 uppercase border-b border-slate-100">
-                  <th className="py-1 pr-4">字段名</th>
-                  <th className="py-1">描述</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fields.map((f, i) => {
-                  const entry = Object.entries(f)[0]
-                  if (!entry) return null
-                  return (
-                    <tr key={i} className="border-b border-slate-50">
-                      <td className="py-1.5 pr-4 font-mono text-xs text-blue-700 whitespace-nowrap">{entry[0]}</td>
-                      <td className="py-1.5 text-slate-600">{entry[1]}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-slate-400 uppercase border-b border-slate-100">
+                    <th className="py-1 pr-4">字段名</th>
+                    <th className="py-1">描述</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fields.map((f, i) => {
+                    const entry = Object.entries(f)[0]
+                    if (!entry) return null
+                    return (
+                      <tr key={i} className="border-b border-slate-50">
+                        <td className="py-1.5 pr-4 font-mono text-xs text-blue-700 whitespace-nowrap">{entry[0]}</td>
+                        <td className="py-1.5 text-slate-600">{entry[1]}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </Card>
           {notes && (
             <Card>
@@ -1455,21 +1459,23 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
 // 内部辅助组件
 function FieldsTable({ fields }: { fields: Record<string, string>[] }) {
   return (
-    <table className="w-full text-sm">
-      <thead><tr className="text-left text-xs text-slate-400 uppercase border-b border-slate-100">
-        <th className="py-1 pr-4">字段名</th><th className="py-1">描述</th>
-      </tr></thead>
-      <tbody>
-        {fields.map((f, i) => {
-          const entry = Object.entries(f)[0]
-          if (!entry) return null
-          return (<tr key={i} className="border-b border-slate-50">
-            <td className="py-1.5 pr-4 font-mono text-xs text-blue-700 whitespace-nowrap">{entry[0]}</td>
-            <td className="py-1.5 text-slate-600">{entry[1]}</td>
-          </tr>)
-        })}
-      </tbody>
-    </table>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead><tr className="text-left text-xs text-slate-400 uppercase border-b border-slate-100">
+          <th className="py-1 pr-4">字段名</th><th className="py-1">描述</th>
+        </tr></thead>
+        <tbody>
+          {fields.map((f, i) => {
+            const entry = Object.entries(f)[0]
+            if (!entry) return null
+            return (<tr key={i} className="border-b border-slate-50">
+              <td className="py-1.5 pr-4 font-mono text-xs text-blue-700 whitespace-nowrap">{entry[0]}</td>
+              <td className="py-1.5 text-slate-600">{entry[1]}</td>
+            </tr>)
+          })}
+        </tbody>
+      </table>
+    </div>
   )
 }
 

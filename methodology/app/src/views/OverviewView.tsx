@@ -128,34 +128,36 @@ export function OverviewView({ model, subView }: { model: Model; subView: SubVie
         <>
           <h3 className="text-lg font-semibold text-slate-700">交互列表</h3>
           <Card>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-400 uppercase border-b border-slate-100">
-                  <th className="py-2 px-3">源</th>
-                  <th className="py-2 px-3">目标</th>
-                  <th className="py-2 px-3">类型</th>
-                  <th className="py-2 px-3">描述</th>
-                </tr>
-              </thead>
-              <tbody>
-                {overview.map((edge, i) => (
-                  <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
-                    <td className="py-2 px-3 font-medium">{edge.from}</td>
-                    <td className="py-2 px-3 font-medium">{edge.to}</td>
-                    <td className="py-2 px-3">
-                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                        edge.type === 'sync'
-                          ? 'bg-amber-50 text-amber-600'
-                          : 'bg-green-50 text-green-600'
-                      }`}>
-                        {edge.type === 'sync' ? 'Async' : 'Call'}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 text-slate-600">{edge.label}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-slate-400 uppercase border-b border-slate-100">
+                    <th className="py-2 px-3">源</th>
+                    <th className="py-2 px-3">目标</th>
+                    <th className="py-2 px-3">类型</th>
+                    <th className="py-2 px-3">描述</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {overview.map((edge, i) => (
+                    <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
+                      <td className="py-2 px-3 font-medium">{edge.from}</td>
+                      <td className="py-2 px-3 font-medium">{edge.to}</td>
+                      <td className="py-2 px-3">
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                          edge.type === 'sync'
+                            ? 'bg-amber-50 text-amber-600'
+                            : 'bg-green-50 text-green-600'
+                        }`}>
+                          {edge.type === 'sync' ? 'Async' : 'Call'}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-slate-600">{edge.label}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </Card>
         </>
       )}

@@ -223,7 +223,7 @@ async function loadModel(modelName: string): Promise<Model> {
 
 function App() {
   const [model, setModel] = useState<Model | null>(null)
-  const [selectedId, setSelectedId] = useState<string>(() => {
+  const [selectedId, setSelectedIdRaw] = useState<string>(() => {
     const hash = window.location.hash.slice(1)
     return hash || 'business'
   })
@@ -231,7 +231,24 @@ function App() {
   const [publicModels, setPublicModels] = useState<string[]>([])
   const [sidebarWidth, setSidebarWidth] = useState(256)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const sidebarRef = useRef<HTMLDivElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
+
+  // 选中树节点：关移动端抽屉 + 主面板回顶
+  const setSelectedId = useCallback((id: string) => {
+    setSelectedIdRaw(id)
+    setDrawerOpen(false)
+    mainRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+  }, [])
+
+  // Esc 关抽屉
+  useEffect(() => {
+    if (!drawerOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawerOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [drawerOpen])
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -341,27 +358,49 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div
+      className="flex flex-col h-screen bg-slate-50"
+      style={{ ['--sidebar-w' as string]: `${sidebarWidth}px` }}
+    >
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-10 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-slate-800">DCDDP Viewer</h1>
-          <span className="text-sm text-slate-400 bg-slate-100 px-2 py-0.5 rounded">📁 {modelName}</span>
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10 px-3 md:px-4 py-2.5 md:py-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+          {/* 移动端：☰ */}
+          <button
+            onClick={() => setDrawerOpen(o => !o)}
+            className="md:hidden text-slate-600 hover:text-slate-900 p-1.5 -ml-1 rounded hover:bg-slate-100"
+            aria-label="切换导航"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+          </button>
+          <h1 className="text-base md:text-lg font-bold text-slate-800 whitespace-nowrap">DCDDP Viewer</h1>
+          <span className="text-xs md:text-sm text-slate-400 bg-slate-100 px-2 py-0.5 rounded truncate min-w-0">📁 {modelName}</span>
         </div>
         <button
           onClick={() => { setModel(null); setModelName(''); window.history.replaceState(null, '', window.location.pathname) }}
-          className="text-sm text-slate-500 hover:text-slate-700 px-3 py-1 rounded hover:bg-slate-100 transition"
+          className="text-xs md:text-sm text-slate-500 hover:text-slate-700 px-2 md:px-3 py-1 rounded hover:bg-slate-100 transition whitespace-nowrap"
         >
-          换一个模型
+          <span className="md:hidden">换</span><span className="hidden md:inline">换一个模型</span>
         </button>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar Tree */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* 移动端遮罩 */}
+        {drawerOpen && (
+          <div
+            className="md:hidden absolute inset-0 z-20 bg-black/30"
+            onClick={() => setDrawerOpen(false)}
+          />
+        )}
+
+        {/* Sidebar Tree（移动端为抽屉，桌面端为可调宽侧栏） */}
         <aside
           ref={sidebarRef}
-          className="bg-white border-r border-slate-200 overflow-y-auto flex-shrink-0"
-          style={{ width: sidebarWidth }}
+          className={`bg-white border-r border-slate-200 overflow-y-auto flex-shrink-0
+            absolute md:static inset-y-0 left-0 z-30
+            w-72 md:w-[var(--sidebar-w)]
+            transition-transform md:transition-none shadow-xl md:shadow-none
+            ${drawerOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
         >
           <ModelTree
             roots={tree}
@@ -370,15 +409,15 @@ function App() {
           />
         </aside>
 
-        {/* Resize Handle */}
+        {/* 调宽手柄（仅桌面） */}
         <div
-          className="w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-500 transition-colors flex-shrink-0"
+          className="hidden md:block w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-500 transition-colors flex-shrink-0"
           onMouseDown={handleResizeStart}
         />
 
         {/* Detail Panel */}
-        <main className="flex-1 overflow-y-auto" style={{ minWidth: 600 }}>
-          <div className="p-6">
+        <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden md:[min-width:600px]">
+          <div className="p-3 md:p-6">
             <DetailPanel model={model} selectedId={selectedId} onNavigate={setSelectedId} />
           </div>
         </main>
