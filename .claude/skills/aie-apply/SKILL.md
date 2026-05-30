@@ -311,6 +311,11 @@ user_invocable: true
    - 检查 `<target>/.gitignore` 是否包含 `.claude_global` 和 `.claude/settings.local.json`
    - 检查 `<target>/knowledge-structure.md` 是否存在
    - **可选规范**：读 `<target>/CLAUDE.md` 中的"## ai-excellence 可选规范"段，列出每项规范的当前状态（启用 / 拒绝 / 未决）。段不存在视为所有规范均"未决"
+   - **已启用项的合规复检（不可跳过）**：对每个标记为 ✅ 的规范，按其推送清单（D-1 / D-2 / D-3、E-1 等）**逐项校验**目标是否仍合规：
+     - 文件类推送（skill SKILL.md、agent .md）：`diff -q <源> <目标>` 必须为空；缺失或不一致即不合规
+     - CLAUDE.md 段类推送：检查目标段内容是否包含规范要求的全部要点（不要求字面完全相同）
+     - 任一不合规即列入修改方案，**与未决项的新启用一起进入第 4 步**
+   - 该步骤的目的：本工程后续给已有规范追加推送内容时（如 system-modeling 后续追加 D-3 model-build），下次 `/aie-apply` 必须能自动检测旧实例的缺口并补推。不能因为"用户没明说要改这项规范"就跳过校验。
 
 3. **输出审查报告**
    - 列出缺失项与不合规项
