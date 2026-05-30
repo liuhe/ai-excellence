@@ -108,6 +108,9 @@ export interface DataModel {
   archetype?: Archetype;
   relationships?: Relationship[];   // 出向关系（统一关系模型）
   _sourceDir?: string;            // viewer-injected: detail YAML 所在目录绝对路径
+  _loadError?: string;            // viewer-injected: detail YAML 加载失败时记录原因；overview 字段仍可用
+  summary?: string;
+  detail?: string;                // overview 里的 detail 路径，detail 缺失时仍保留
   fields?: Record<string, string>[];
   notes?: string;
   state_machine?: StateMachine;
@@ -194,6 +197,9 @@ export interface Application {
   name?: string;
   type?: 'frontend' | 'client' | 'backend' | 'proxy' | 'external';
   _sourceDir?: string;             // viewer-injected: detail YAML 所在目录绝对路径，用于 markdown 相对链接解析
+  _loadError?: string;             // viewer-injected: detail YAML 加载失败时记录原因；overview 字段仍可用
+  summary?: string;
+  detail?: string;                 // overview 里的 detail 路径，detail 缺失时仍保留
   tech_stack?: TechStack;
   infrastructure?: Infrastructure[];
   pages?: Page[];

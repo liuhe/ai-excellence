@@ -181,10 +181,16 @@ async function loadModel(modelName: string): Promise<Model> {
   // 相对路径：resolve 时拿当前 document URL 当 base。
   // 允许 dist 部署在任意子路径下；也避开 file:// 下 `/` 指向文件系统根目录的坑。
   const base = modelName
+
+  // 顶层 overview 文件：缺失也不阻断，给空对象兜底（让 viewer 至少能跑起来）
+  const tryFetch = async (path: string): Promise<Record<string, unknown>> => {
+    try { return await fetchYaml(path) }
+    catch (e) { console.warn(`[viewer] overview load failed, falling back to empty: ${path}`, e); return {} }
+  }
   const [business, businessModelOverview, applicationsOverview] = await Promise.all([
-    fetchYaml(`${base}/business.yaml`),
-    fetchYaml(`${base}/business-model.yaml`),
-    fetchYaml(`${base}/applications.yaml`),
+    tryFetch(`${base}/business.yaml`),
+    tryFetch(`${base}/business-model.yaml`),
+    tryFetch(`${base}/applications.yaml`),
   ])
 
   const entities = (businessModelOverview.entities || []) as Array<{ detail?: string; name?: string }>
@@ -195,10 +201,17 @@ async function loadModel(modelName: string): Promise<Model> {
     const full = resolveDetailPath(base, detailPath)
     return full.replace(/\/[^/]+$/, '/')
   }
+  // detail 加载容错：失败时保留 overview 数据 + 标 `_loadError`，让 viewer 仍能渲染列表 + UI 标"未填充"
   const augment = async (e: { detail?: string }) => {
     if (!e.detail) return e
-    const data = await fetchYaml(resolveDetailPath(base, e.detail))
-    return { ...data, _sourceDir: detailDir(e.detail) }
+    try {
+      const data = await fetchYaml(resolveDetailPath(base, e.detail))
+      return { ...e, ...data, _sourceDir: detailDir(e.detail) }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.warn(`[viewer] detail load failed: ${e.detail}`, err)
+      return { ...e, _sourceDir: detailDir(e.detail), _loadError: msg }
+    }
   }
 
   const [entityDetails, appDetails] = await Promise.all([

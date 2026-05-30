@@ -474,6 +474,8 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
       return (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-slate-800">▪ {n(dm, 'name', '名称')}</h2>
+          {dm._loadError && <LoadErrorBanner detail={dm.detail} error={dm._loadError} />}
+          {dm.summary && <p className="text-slate-600">{dm.summary}</p>}
           <div className="flex gap-2 items-center flex-wrap">
             {(dm.table_name || dm.表名) && (
               <span className="font-mono text-sm text-slate-400 bg-slate-100 px-2 py-1 rounded">
@@ -637,6 +639,8 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
             <h2 className="text-2xl font-bold text-slate-800">{appName}</h2>
             <Badge color={APP_TYPE_COLORS[appType] || 'gray'}>{appType}</Badge>
           </div>
+          {app._loadError && <LoadErrorBanner detail={app.detail} error={app._loadError} />}
+          {app.summary && <p className="text-slate-600">{app.summary}</p>}
           <AppDetailDiagram model={model} appIndex={idx} />
           {(() => {
             // Group use cases by package
@@ -1486,6 +1490,17 @@ function Empty() {
     <Card>
       <p className="text-slate-500 text-center py-8">选择左侧树中的节点查看详情</p>
     </Card>
+  )
+}
+
+function LoadErrorBanner({ detail, error }: { detail?: string; error: string }) {
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm">
+      <div className="font-semibold text-amber-800 mb-1">⚠️ detail 文件未加载</div>
+      {detail && <div className="font-mono text-xs text-amber-700">引用：{detail}</div>}
+      <div className="text-amber-700 mt-1">原因：{error}</div>
+      <div className="text-amber-600 text-xs mt-1">仅显示 overview（name / summary 等），detail 内的字段、规则、状态机等暂时缺失。</div>
+    </div>
   )
 }
 
