@@ -162,7 +162,7 @@ user_invocable: true
 
 ### 决定流程（自然语言，非参数）
 
-1. `/aie-apply` 启动时扫一遍 ai-excellence 当前提供的可选规范（当前：D system-modeling、E task-workflow）。
+1. `/aie-apply` 启动时扫一遍 ai-excellence 当前提供的可选规范（当前：D system-modeling、E team-mode）。
 2. 对每项规范，读被管工程 CLAUDE.md "## ai-excellence 可选规范" 段，确定状态：**启用** → 推送/更新内容；**拒绝** → 跳过；**未决** → 进入第 3 步。
 3. **未决处理**：先看用户本次 `/aie-apply` 调用时是否在自然语言中表达了意图（例："给它启用建模"、"这个项目不要建模"）。
    - 表达了 → 直接按表达处理。
@@ -258,7 +258,7 @@ user_invocable: true
 5. 输出 viewer URL（`http://localhost:5173/`），提示用户在 viewer 中切换到本工程模型。
 ````
 
-**启用后推送内容 D-3**：把 ai-excellence 下的 model-build skill 整体拷贝到受管工程（**直接逐字拷贝，不做占位符替换**，与 task-workflow 同模式）：
+**启用后推送内容 D-3**：把 ai-excellence 下的 model-build skill 整体拷贝到受管工程（**直接逐字拷贝，不做占位符替换**）：
 
 | 源 | 目标 |
 |---|---|
@@ -268,31 +268,31 @@ user_invocable: true
 
 该 skill 把 viewer + 本工程模型 build 成自包含静态站到 `<target>/docs/modeling/static/`，无需 dev server 即可浏览（双击或简单 HTTP server）。前置依赖：viewer 已支持 md 链接弹层渲染（不再依赖 dev-only 的 `markdownAsHtml` 插件）。
 
-### E. Task 工作流 skill 集
+### E. 团队模式
 
-**Feature 名称**：`task-workflow`
+**Feature 名称**：`team-mode`
 
-把"任务全生命周期"工程化为状态机驱动的多 sub-agent 协作流程：init → design → design-review → implement → code-review → test → docs。每个有 verdict 的阶段拆成两个 phase：**exec**（observer，design-review / code-review 走 ensemble × 2 并行，test / docs 单 replica）+ **plan**（综合 verdict + 收口副作用）。状态外化到 `projects/<initiative>/tasks/<slug>/{goal.md, progress.txt, state.json, design.md, reviews/, test-runs/, docs-rounds/}`。配 `/loop /aie-task-next` 自治执行；plan phase 在 exec 成功后同一 firing 内紧接着拉起，避免 ScheduleWakeup 60s 等待被 phase 放大。
+替代已废弃的 task 工作流。完整规范见 `<aie-root>/docs/team-mode.md`。核心思想：用户只跟 PM 对话，PM 按系统设计师写在 `design.md` 的执行计划，协调 6 个专职角色完成任务。每个角色 system prompt 第一段是禁令，越界拒答。产品 / 设计两个角色的输出按 DCDDP 系统建模语言组织。
 
-**启用后推送内容 E-1**：把 ai-excellence 下列 9 个 skill 目录整体拷贝到受管工程对应路径（**直接逐字拷贝，不做占位符替换**）：
+**启用后推送内容 E-1**：把 ai-excellence 下列文件整体拷贝到受管工程对应路径（**直接逐字拷贝，不做占位符替换**）：
 
 | 源 | 目标 |
 |---|---|
-| `<aie-root>/.claude/skills/aie-task-init/SKILL.md` | `<target>/.claude/skills/aie-task-init/SKILL.md` |
-| `<aie-root>/.claude/skills/aie-task-next/SKILL.md` | `<target>/.claude/skills/aie-task-next/SKILL.md` |
-| `<aie-root>/.claude/skills/aie-task-plan/SKILL.md` | `<target>/.claude/skills/aie-task-plan/SKILL.md` |
-| `<aie-root>/.claude/skills/aie-task-design/SKILL.md` | `<target>/.claude/skills/aie-task-design/SKILL.md` |
-| `<aie-root>/.claude/skills/aie-task-design-review/SKILL.md` | `<target>/.claude/skills/aie-task-design-review/SKILL.md` |
-| `<aie-root>/.claude/skills/aie-task-implement/SKILL.md` | `<target>/.claude/skills/aie-task-implement/SKILL.md` |
-| `<aie-root>/.claude/skills/aie-task-code-review/SKILL.md` | `<target>/.claude/skills/aie-task-code-review/SKILL.md` |
-| `<aie-root>/.claude/skills/aie-task-test/SKILL.md` | `<target>/.claude/skills/aie-task-test/SKILL.md` |
-| `<aie-root>/.claude/skills/aie-task-docs/SKILL.md` | `<target>/.claude/skills/aie-task-docs/SKILL.md` |
+| `<aie-root>/.claude/skills/aie-pm/SKILL.md` | `<target>/.claude/skills/aie-pm/SKILL.md` |
+| `<aie-root>/.claude/agents/aie-role-product.md` | `<target>/.claude/agents/aie-role-product.md` |
+| `<aie-root>/.claude/agents/aie-role-architect.md` | `<target>/.claude/agents/aie-role-architect.md` |
+| `<aie-root>/.claude/agents/aie-role-design-reviewer.md` | `<target>/.claude/agents/aie-role-design-reviewer.md` |
+| `<aie-root>/.claude/agents/aie-role-test-designer.md` | `<target>/.claude/agents/aie-role-test-designer.md` |
+| `<aie-root>/.claude/agents/aie-role-developer.md` | `<target>/.claude/agents/aie-role-developer.md` |
+| `<aie-root>/.claude/agents/aie-role-qa.md` | `<target>/.claude/agents/aie-role-qa.md` |
 
-合规检查：9 个目标文件都存在且与源**逐字相同**（用 `diff -q` 比较）。任一不符即不合规，给 diff 让用户确认覆盖。
+合规检查：7 个目标文件都存在且与源**逐字相同**（用 `diff -q` 比较）。任一不符即不合规，给 diff 让用户确认覆盖。
 
-**启用后推送内容 E-2**：无需 CLAUDE.md 段（task workflow 入口是 skill，不必常驻 prompt）。仅在 "## ai-excellence 可选规范" 段中以 `✅ task-workflow` 标记启用。
+**启用后推送内容 E-2**：无需 CLAUDE.md 段（团队模式入口是 skill，不必常驻 prompt）。仅在 "## ai-excellence 可选规范" 段中以 `✅ team-mode` 标记启用。
 
-集成入口：本 SKILL.md 中的 E 节描述（无独立 doc 文件，skill 自身即入口）。
+**前置依赖**：产品 / 设计师两个角色输出按 DCDDP，因此**建议同时启用 `system-modeling`**——如未启用，agent 仍会按 DCDDP schema 表达，但项目级 `docs/modeling/` 不存在时只能纸面表达，无法落地到模型文件。`/aie-apply` 在决定流程里如果用户选择启用 team-mode 但拒绝 system-modeling，需提醒用户这个权衡。
+
+集成入口：本 SKILL.md 中的 E 节描述（无独立 doc 文件，规范完整内容在 `docs/team-mode.md`）。
 
 ## 执行步骤
 
