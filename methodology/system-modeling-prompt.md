@@ -280,14 +280,25 @@ Overview is mandatory for every view. Details are produced as the model deepens.
 **2. Business View First (regardless of starting view, this must be present)**
 
 - Identify the organization providing the system or service.
-- Identify who interacts with the system: who operates it internally (`business_workers`)? What external parties interact with it?
+- Identify who interacts with the system:
+  - **`business_workers`** = internal roles paid/assigned to **OPERATE** the system on the org's behalf (Admin, Operator, Customer Service). For personal tools / single-user setups / self-built internal tools, this is usually `[]`.
+  - **`external_parties`** = the people / systems / devices that **USE or INTEGRATE WITH** the system (customers, partners, upstream platforms). The end user belongs here — **even when they are the same person who built the tool**. Putting the user in `business_workers` is treating "using" as "operating" — a common mistake.
 - Group external participants by **which party they belong to**. A game player and their console belong to the same party. An external e-commerce platform is its own party.
 - For parties that ARE systems (no human behind), set `type: system`. For parties with people/devices, list them under `participants`.
-- Define business use cases — describe VALUE delivered to actors, not technical operations.
-  - Ask: "Who are the distinct value receivers?" Different value receivers = different business use cases.
-  - Link each business use case to system use cases via `system_use_cases`.
+- Define business use cases — **GOALS the actor brings to the system**, not features the system offers. AI's default failure mode is to slice by feature theme; collapse them.
+  - **Litmus test**: would the actor describe this as "I came here to ____"? If you need to say "I came here to use feature X", X is a feature — find the parent goal and merge X into it.
+  - **Naming**: name should convey "why this system" (the differentiated value), not just "what action" (which is generic).
+    - Weak: "Browse Files" (any system with browsing could be named this)
+    - Strong: "Read Remote Files Without SSH" (points at the substitute and the saved cost)
+  - **Split ONLY when both hold**: (a) different value receiver / actor group, AND (b) the goal-level description is materially different.
+  - **Do NOT split** by feature theme — rewind / export / cross-device-resume are facets of one goal ("use the AI remotely"), one business use case.
+  - **Do NOT split** by lifecycle stage — start / send / interrupt / close belong to one goal.
+  - **Exclude** tech-ops tasks (adduser, deploy, monitor, migrate); they aren't business goals. They live in deployment view or as server app use cases.
+  - **Exclude** system-internal non-user-visible behavior (file watchers, timers, self-healing); those are app-internal use cases, not business use cases.
+  - **Typical project: 1–5 business use cases.** If you have >8, you are almost certainly enumerating features rather than goals — collapse by parent goal.
+  - Link each business use case to its system use cases via `system_use_cases`.
 - Add `stakeholder_interests` to surface hidden requirements and conflicting interests.
-- System use cases (in `business.systems`) are a **thin glue layer** — declare WHAT the system promises, with `entry` pointing to the front-door application use case. They carry NO rules.
+- System use cases (in `business.systems`) are a **thin glue layer** — declare WHAT the system promises, with `entry` pointing to the front-door application use case. They carry **NO rules, NO api, NO interaction details** (those belong to application use cases + pages). Expect tens of system use cases for a non-trivial system.
 
 **3. Three-Layer Use Case Structure**
 
@@ -395,6 +406,9 @@ Before finalizing, verify:
 - [ ] Every external party participant appears in at least one use case or topology edge
 - [ ] External parties group related participants together
 - [ ] Business use cases have `stakeholder_interests` defined when multiple stakeholders exist
+- [ ] **Business use case count is 1–5**; if more, each extra one is justified as a *distinct goal* (different value receiver AND different goal-level description), not as a separate feature / lifecycle stage / tech-ops task
+- [ ] **Business use case names express WHY (the differentiated value), not just WHAT (generic activity)**
+- [ ] **`business_workers` only contains roles paid to OPERATE the system**; end users (even single-developer personal tools) belong in `external_parties`
 - [ ] Business use cases link to system use cases via `system_use_cases`
 - [ ] System use cases have `entry` pointing to a front-door application use case
 - [ ] System use cases carry NO rules
