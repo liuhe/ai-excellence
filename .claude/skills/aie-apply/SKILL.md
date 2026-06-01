@@ -25,7 +25,7 @@ user_invocable: true
 
 ## 要应用到被管工程的规范
 
-被管工程最终应满足 A、B 两块。
+被管工程最终应满足 A、B、B'、C、F 五块（D、E 为可选规范，见下文）。
 
 ### A. 被管工程的 CLAUDE.md 必须包含
 
@@ -141,6 +141,25 @@ user_invocable: true
 ```
 
 缺失时按项目当前实际顶级目录列表生成草稿；用途说明优先从既有 `CLAUDE.md` 内容提取，否则按目录名推测并明确标注为"建议"，请用户确认后写入。
+
+### F. 基础工具 skill（mandatory）
+
+每个受管工程必须装备一组用于"评估自身 AI 协作配置"的基础工具 skill。这些 skill 在 ai-excellence 维护权威版本，通过 `/aie-apply` **逐字拷贝**到受管工程，让用户可以在受管工程目录里直接调用。
+
+**推送内容 F-1**：把 ai-excellence 下列文件整体拷贝到受管工程对应路径（**直接逐字拷贝，不做占位符替换**）：
+
+| 源 | 目标 |
+|---|---|
+| `<aie-root>/.claude/skills/aie-test/SKILL.md` | `<target>/.claude/skills/aie-test/SKILL.md` |
+| `<aie-root>/.claude/skills/aie-review/SKILL.md` | `<target>/.claude/skills/aie-review/SKILL.md` |
+
+合规检查：两个目标文件都存在且与源**逐字相同**（`diff -q`）。任一不符即不合规，给 diff 让用户确认覆盖。
+
+**为什么逐字拷贝而不是 pointer**：skill 通过本地 cwd 触发，必须在受管工程 `.claude/skills/` 下能被发现。pointer / 软链路径会绕过 Claude Code 的 skill 发现机制。代价是每次 skill 更新都要重跑 `/aie-apply` 同步——合规复检会自动报告偏差。
+
+**对 ai-excellence 自身的特例**：ai-excellence 自己就是这些 skill 的源头，不需要把自己的 skill 拷贝给自己。F 节合规检查在"当前工程就是 ai-excellence"时跳过。
+
+**两个 skill 自身行为差异（受管工程 vs ai-excellence）**：skill 内容里描述了"仅当当前仓库是 ai-excellence 时白名单加 methodology/"这种条件分支。SKILL.md 逐字一致，运行时由 AI 根据 cwd 仓库判断分支，这是 by design。
 
 ## 可选规范（按对话决定启用）
 
@@ -310,6 +329,7 @@ user_invocable: true
    - 检查 `<target>/.claude_global/` 是否存在且包含 3 个有效软链分别指向 `~/.claude/{CLAUDE.md,settings.json,settings.local.json}`
    - 检查 `<target>/.gitignore` 是否包含 `.claude_global` 和 `.claude/settings.local.json`
    - 检查 `<target>/knowledge-structure.md` 是否存在
+   - **F 节合规复检**：若 `<target>` **不是** ai-excellence 自身，对 F-1 表里每条逐项 `diff -q <源> <目标>`，缺失或不一致即列入修改方案
    - **可选规范**：读 `<target>/CLAUDE.md` 中的"## ai-excellence 可选规范"段，列出每项规范的当前状态（启用 / 拒绝 / 未决）。段不存在视为所有规范均"未决"
    - **已启用项的合规复检（不可跳过）**：对每个标记为 ✅ 的规范，按其推送清单（D-1 / D-2 / D-3、E-1 等）**逐项校验**目标是否仍合规：
      - 文件类推送（skill SKILL.md、agent .md）：`diff -q <源> <目标>` 必须为空；缺失或不一致即不合规
@@ -327,6 +347,7 @@ user_invocable: true
    - `.claude_global/` 目录：缺失则创建，并在内部建 3 个软链 → `~/.claude/{CLAUDE.md,settings.json,settings.local.json}`
    - `.gitignore`：缺 `.claude_global` 则追加；缺 `.claude/settings.local.json` 则追加
    - `knowledge-structure.md`：缺失则扫描项目顶级目录生成草稿，用途说明优先从 CLAUDE.md 提取、否则按目录名推测并标"建议"，请用户审核确认后写入
+   - **F 节**：按 F-1 表把不合规/缺失项的源文件逐字拷贝到目标路径，目标目录不存在则先创建
    - `projects/` 目录：**不主动创建**，留给项目模式启动时按需创建
    - **可选规范**：
      - 对每个**未决**项：先看第 1 步保留的用户意图是否覆盖；若仍未决，**直接询问用户**（自然语言），获得答复后再继续

@@ -204,6 +204,29 @@ business:
 
 **设计理由**：Player 和 Console 天然属于同一个"方"，按组织分组比按类型分组（人/设备/系统）更符合现实。
 
+### 判别：外部系统是 external_party 还是技术依赖？
+
+不是所有"系统外的东西"都进 `external_parties`。判别口诀：
+
+> **是用户的对手方** → external_party  
+> **是系统调用的工具 / 服务 / 基础设施** → 不进业务视图，归到应用视图的 `application_topology`
+
+具体看两点：
+1. **谁在跟它打交道**：用户直接跟它互动（哪怕通过本系统中转）→ 对手方；只有本系统在调用它，用户无感知 → 工具。
+2. **价值流向**：它提供价值给用户（用户为这个价值而来）→ 对手方；它只是让本系统能干活 → 工具。
+
+举例（同一个工程里要一致处理）：
+
+| 外部系统 | 用户感知 | 判别 |
+|---|---|---|
+| Taobao（用户在 Taobao 下单，本系统对接） | 用户主动跟 Taobao 打交道 | external_party |
+| Stripe（用户结账时填卡，本系统转给 Stripe） | 用户跟 Stripe 直接交付支付信息 | external_party |
+| Claude API / 第三方 LLM 服务（用户跟本系统聊天，系统转发给 LLM） | 用户对接的是本系统的 chat 界面，不直接对 LLM | **工具，不入 external_parties** |
+| Headless Chrome（用于导出 PDF） | 用户完全无感知 | 工具，不入 |
+| Host File System / 数据库 | 用户无感知 | 工具，不入 |
+
+**常见误区**：把"系统名字响亮 / 是个大厂服务"当成对手方。响亮不重要，**用户是否直接跟它发生业务关系**才重要。
+
 ## 9. 用例 Package 分组
 
 支持用例按 `package` 字段逻辑分组（如 "Admin Operations"、"Taobao Integration"），适用于系统用例和子系统用例两个层级：
