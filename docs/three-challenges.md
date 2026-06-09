@@ -14,13 +14,11 @@
 
 ### 本工程的具体答案：评估机制
 
-分层只是原则，**还需要可重复的方式去评估各层是否健康**——尤其是 CLAUDE.md 这种半固定开销最容易膨胀。本工程通过两个 skill 实现：
+分层只是原则，**还需要可重复的方式去评估各层是否健康**——尤其是 CLAUDE.md 这种半固定开销最容易膨胀。本工程通过三个 skill 实现，分别对应"加用例 / 静态体检 / 行为测试"三件事：
 
-- **`/aie-test-add <project>`** — 给受管工程添加测试用例（prompt + 判断标准），存到 `<target>/.claude/aie-tests/<name>.md`。测试用例是用户对"该工程的 AI 应当怎样回应"的预期固化。
-- **`/aie-improve <project>`** — 评估受管工程的 AI 协作配置，输出改进建议。包含：
-  - **静态体检**：CLAUDE.md 体量、逐条规则的三问评审（频率 / 性质 / 刚性）、重复与冲突检测、与现有 Skills/Hooks 的去重
-  - **行为测试**：在 `<target>` 目录下用 `claude -p` headless 跑测试用例（真实加载该工程的 CLAUDE.md / Skills / Hooks），用 LLM-as-judge 按 criteria 判定
-  - **汇总建议**：按 severity 排序，每条带 scope / issue / suggestion / rationale；默认只读，落地走 diff 确认
+- **`/aie-test-add`** — 给当前工程添加测试用例（prompt + 判断标准），存到 `.claude/aie-tests/<name>.md`。测试用例是用户对"该工程的 AI 应当怎样回应"的预期固化。
+- **`/aie-review [--auto-fix]`** — 对当前工程的 AI 协作配置做**静态体检**（lint 级，不跑测试）：CLAUDE.md 体量、逐条规则的三问评审（频率 / 性质 / 刚性）、重复与冲突检测、与现有 Skills/Hooks 的去重。建议按 severity 排序，每条带 scope / issue / suggestion / rationale；默认只读，`--auto-fix` 在 worktree + 新分支里自动落地 high 级建议。
+- **`/aie-test [case] [--auto-fix]`** — 跑当前工程 `.claude/aie-tests/` 下的**行为测试**：用 `claude -p` headless 真实加载工程的 CLAUDE.md / Skills / Hooks，用 LLM-as-judge 按 criteria 判定。`--auto-fix` 在 worktree 里循环修复直到通过。
 
 **三问框架**（评估每条 CLAUDE.md 规则时的判定准则）：
 
@@ -78,7 +76,7 @@
 
 **与困难一/三的边界**：CLAUDE.md 重注入、Skill 描述符常驻、UserPromptSubmit hook 看似也是"关注点机制"，但它们解决的是"通用约定有没有被想起来"——属于困难一（上下文分层）和困难三（带宽固化）。困难二专指**因为是同一个 AI 而产出降质**，解法核心是**换一个 AI 来做这件事**。
 
-**`/aie-improve` 的位置**：它本身就是"评估配置 + 加测试用例 + 给建议"三件事拆给不同 subagent 做——评估角色不该同时设计测试，测试 judge 不该同时给改写建议。这是把困难二的方法论用在工具自身设计上。
+**评估工具自身的拆分**：`/aie-test-add`（设计用例）/ `/aie-review`（静态体检）/ `/aie-test`（行为测试）原本是一个 `/aie-improve` 里捏在一起的三件事，后来拆成三个独立 skill——用例设计角色不该同时给改写建议，行为 judge 不该同时做 lint 体检，静态体检要跑得快、不该被 headless 测试拖慢。这是把困难二的方法论用在工具自身设计上。
 
 ## 三、沟通带宽与丰度 — I/O 问题
 
