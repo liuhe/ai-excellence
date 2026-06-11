@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\", \"additionalContext\": \"判断本条消息是否在纠偏或缩窄讨论范围；若是，先用一句话复述修正后的讨论焦点，再回答。\"}}'"
+          }
+        ]
+      }
+    ]
+  }
+}
