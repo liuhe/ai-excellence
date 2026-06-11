@@ -9,8 +9,9 @@
 - 关心的是"信息在不在 prompt 里、占多少 token、会不会被噪声盖过"
 - 固定开销（系统指令、Skill 描述符、MCP 工具定义）一旦超标，留给动态对话的空间就被挤压
 - 经验上，上下文用量较高时模型会出现退化迹象（具体阈值因任务而异）
+- 位置也是容量问题的一部分：长上下文对首尾敏感、中段易被弱化（lost in the middle）——一次长对话里丢的往往不是事实，而是对话脉络（当前焦点、概念定义、已排除方向）
 
-**应对手段**：分层归属（CLAUDE.md / Skills / Rules / Hooks）、`/compact`、`/clear`、Subagents 隔离、HANDOFF.md。
+**应对手段**：分层归属（CLAUDE.md / Skills / Rules / Hooks）、`/compact`、`/clear`、Subagents 隔离、HANDOFF.md、对话焦点维护（信号触发的焦点复述，纠偏即复述；详见 methodology.md）。
 
 ### 本工程的具体答案：评估机制
 

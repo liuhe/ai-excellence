@@ -58,6 +58,13 @@ user_invocable: true
 
 不确定该放哪？停下来与用户确认。
 
+### 对话焦点维护
+
+跑偏不按节奏发生，所以按信号触发而非定期总结。出现以下任一信号时，先用 ≤3 行复述"当前讨论焦点 + 已排除方向"，确认后再继续：
+
+- 用户发出纠偏语（"不是这个" / "抓住重点" / "我想谈的是…"），或连续两轮追问同一个点
+- 准备引入新话题、新机制，或上一轮回答被用户缩窄了范围
+
 ### 项目文件结构
 
 `projects/<name>/` 下：
@@ -98,7 +105,7 @@ user_invocable: true
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\", \"additionalContext\": \"处理用户请求前，先判断上一轮是否有需要记录的内容（操作结果、领域知识、决策等）。按 knowledge-structure.md 的分层落位：核心常驻约束→CLAUDE.md；参考数据→独立文件；操作流程→.claude/skills/；项目内进展→projects/<name>/{tasks,log}.md。有则先更新，没有则直接处理请求。\"}}'"
+            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\", \"additionalContext\": \"处理用户请求前，先判断上一轮是否有需要记录的内容（操作结果、领域知识、决策等）。按 knowledge-structure.md 的分层落位：核心常驻约束→CLAUDE.md；参考数据→独立文件；操作流程→.claude/skills/；项目内进展→projects/<name>/{tasks,log}.md。有则先更新，没有则直接处理请求。同时判断本条消息是否在纠偏或缩窄讨论范围；若是，先用一句话复述修正后的讨论焦点，再回答。\"}}'"
           }
         ]
       }
