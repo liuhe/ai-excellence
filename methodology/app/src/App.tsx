@@ -177,10 +177,27 @@ function resolveDetailPath(base: string, ref: string): string {
   return `${base}/${cleaned}`
 }
 
-async function loadModel(modelName: string): Promise<Model> {
+type PublicModel = {
+  name: string
+  path: string
+}
+
+function normalizePublicModels(list: unknown): PublicModel[] {
+  if (!Array.isArray(list)) return []
+  return list.flatMap(item => {
+    if (typeof item === 'string') return [{ name: item, path: item }]
+    if (item && typeof item === 'object') {
+      const model = item as { name?: unknown; path?: unknown }
+      if (typeof model.name === 'string' && typeof model.path === 'string') return [{ name: model.name, path: model.path }]
+    }
+    return []
+  })
+}
+
+async function loadModel(modelPath: string): Promise<Model> {
   // 相对路径：resolve 时拿当前 document URL 当 base。
   // 允许 dist 部署在任意子路径下；也避开 file:// 下 `/` 指向文件系统根目录的坑。
-  const base = modelName
+  const base = modelPath
 
   // 顶层 overview 文件：缺失也不阻断，给空对象兜底（让 viewer 至少能跑起来）
   const tryFetch = async (path: string): Promise<Record<string, unknown>> => {
@@ -243,7 +260,7 @@ function App() {
     return hash || 'business'
   })
   const [modelName, setModelName] = useState('')
-  const [publicModels, setPublicModels] = useState<string[]>([])
+  const [publicModels, setPublicModels] = useState<PublicModel[]>([])
   const [sidebarWidth, setSidebarWidth] = useState(256)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -309,19 +326,19 @@ function App() {
   useEffect(() => {
     fetch('models.json')
       .then(r => r.json())
-      .then((list: string[]) => setPublicModels(list))
+      .then(list => setPublicModels(normalizePublicModels(list)))
       .catch(() => {})
   }, [])
 
-  const loadPublicModel = useCallback(async (name: string, preserveNav = false) => {
+  const loadPublicModel = useCallback(async (publicModel: PublicModel, preserveNav = false) => {
     setLoadError(null)
     try {
-      const m = await loadModel(name)
+      const m = await loadModel(publicModel.path)
       setModel(m)
-      setModelName(name)
+      setModelName(publicModel.name)
       const existingHash = window.location.hash.slice(1)
       const navId = preserveNav && existingHash ? existingHash : 'business'
-      window.history.replaceState(null, '', `?model=${encodeURIComponent(name)}#${navId}`)
+      window.history.replaceState(null, '', `?model=${encodeURIComponent(publicModel.name)}#${navId}`)
       setSelectedId(navId)
     } catch (e) {
       setLoadError((e as Error).message)
@@ -332,8 +349,9 @@ function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const m = params.get('model')
-    if (m) loadPublicModel(m, true)
-  }, [loadPublicModel])
+    const publicModel = publicModels.find(model => model.name === m || model.path === m)
+    if (publicModel) loadPublicModel(publicModel, true)
+  }, [publicModels, loadPublicModel])
 
   const tree = useMemo(() => model ? buildTree(model) : null, [model])
 
@@ -355,11 +373,11 @@ function App() {
               <div className="flex flex-wrap gap-2 justify-center">
                 {publicModels.map(m => (
                   <button
-                    key={m}
+                    key={`${m.name}:${m.path}`}
                     className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition text-sm font-medium"
                     onClick={() => loadPublicModel(m)}
                   >
-                    📁 {m}
+                    📁 {m.name}
                   </button>
                 ))}
               </div>

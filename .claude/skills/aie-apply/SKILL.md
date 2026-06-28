@@ -284,15 +284,24 @@ user_invocable: true
 5. 输出 viewer URL（`http://localhost:5173/`），提示用户在 viewer 中切换到本工程模型。
 ````
 
-**启用后推送内容 D-3**：把 ai-excellence 下的 model-build skill 整体拷贝到受管工程（**直接逐字拷贝，不做占位符替换**）：
+**启用后推送内容 D-3**：安装静态 viewer 到 `<target>/docs/modeling/viewer/`（不复制模型文件）：
 
-| 源 | 目标 |
-|---|---|
-| `<aie-root>/.claude/skills/model-build/SKILL.md` | `<target>/.claude/skills/model-build/SKILL.md` |
+1. 在 `<aie-root>/methodology/app/` 跑 `npm install`（若缺 `node_modules`）+ `npm run build`。
+2. 清理 `<aie-root>/methodology/app/dist/` 中由 Vite 从 `public/` 带出的模型目录/软链内容，只保留 viewer 顶层资源（如 `index.html`、`assets/`、`favicon.svg`、`icons.svg`）。
+3. 把 `<aie-root>/methodology/app/dist/models.json` 改写为：
+   ```json
+   [{ "name": "<工程名>", "path": ".." }]
+   ```
+   其中 `<工程名>` 为 `<target>` 根目录 basename；`path: ".."` 表示 viewer 从 `docs/modeling/viewer/` 的上级目录读取模型文件，即 `<target>/docs/modeling/`。
+4. 把处理后的 dist 内容复制到 `<target>/docs/modeling/viewer/`。
+5. 在 `<target>/.gitignore` 中确保有 `docs/modeling/viewer/` 一行（安装产物不入 git）。
+6. 若旧 `<target>/.claude/skills/model-build/` 存在，列入修改方案并在用户确认后移除；该 skill 已废弃，静态 viewer 安装是 `system-modeling` 的默认推送内容。
+7. 若旧 `<target>/docs/modeling/static/` 存在，列入修改方案并在用户确认后删除；旧 static 是已废弃 build 模式产物，不再保留。
+8. 从 `<target>/.gitignore` 移除 `docs/modeling/static/` 条目，确保只保留 `docs/modeling/viewer/`。
 
-合规检查：目标文件存在且与源**逐字相同**（`diff -q`）。不符即给 diff 让用户确认覆盖。
+合规检查：`<target>/docs/modeling/viewer/index.html` 存在，`<target>/docs/modeling/viewer/assets/` 存在，`<target>/docs/modeling/viewer/models.json` 等于 `[{ "name": "<工程名>", "path": ".." }]`，`<target>/.gitignore` 包含 `docs/modeling/viewer/` 且不包含 `docs/modeling/static/`，`<target>/.claude/skills/model-build/` 不存在，且 `<target>/docs/modeling/static/` 不存在。任一不符即列入修改方案。
 
-该 skill 把 viewer + 本工程模型 build 成自包含静态站到 `<target>/docs/modeling/static/`，无需 dev server 即可浏览（双击或简单 HTTP server）。前置依赖：viewer 已支持 md 链接弹层渲染（不再依赖 dev-only 的 `markdownAsHtml` 插件）。
+安装后无需 dev server 即可浏览：`cd <target> && python -m http.server -d docs/modeling 8080`，浏览器打开 `http://localhost:8080/viewer/?model=<工程名>`。模型文件仍保留在 `docs/modeling/` 原位置，viewer 通过相对路径读取。
 
 ### E. 团队模式
 
@@ -341,8 +350,9 @@ user_invocable: true
    - **已启用项的合规复检（不可跳过）**：对每个标记为 ✅ 的规范，按其推送清单（D-1 / D-2 / D-3、E-1 等）**逐项校验**目标是否仍合规：
      - 文件类推送（skill SKILL.md、agent .md）：`diff -q <源> <目标>` 必须为空；缺失或不一致即不合规
      - CLAUDE.md 段类推送：检查目标段内容是否包含规范要求的全部要点（不要求字面完全相同）
+     - 安装产物类推送（如 D-3 `docs/modeling/viewer/`）：按该节列出的文件存在性、配置内容和 `.gitignore` 条目逐项检查
      - 任一不合规即列入修改方案，**与未决项的新启用一起进入第 4 步**
-   - 该步骤的目的：本工程后续给已有规范追加推送内容时（如 system-modeling 后续追加 D-3 model-build），下次 `/aie-apply` 必须能自动检测旧实例的缺口并补推。不能因为"用户没明说要改这项规范"就跳过校验。
+   - 该步骤的目的：本工程后续给已有规范追加推送内容时（如 system-modeling 后续追加 D-3 viewer 安装），下次 `/aie-apply` 必须能自动检测旧实例的缺口并补推。不能因为"用户没明说要改这项规范"就跳过校验。
 
 3. **输出审查报告**
    - 列出缺失项与不合规项
@@ -358,7 +368,7 @@ user_invocable: true
    - `projects/` 目录：**不主动创建**，留给项目模式启动时按需创建
    - **可选规范**：
      - 对每个**未决**项：先看第 1 步保留的用户意图是否覆盖；若仍未决，**直接询问用户**（自然语言），获得答复后再继续
-     - 对每个**启用**项：按对应规范的"推送内容"生成 diff（CLAUDE.md 段、新建 skill 等）。**保留模板中的 `<aie-root>` 占位符不替换**（公开仓库不能含本机路径）。同时维护 `<target>/.claude/settings.local.json` 的 `aie_root` 字段为第 1 步算出的实际路径（merge 而非覆盖现有 settings.local.json 内容）；并确保 `<target>/.gitignore` 含 `.claude/settings.local.json`
+     - 对每个**启用**项：按对应规范的"推送内容"生成 diff（CLAUDE.md 段、新建 skill、安装 viewer 目录、移除废弃 skill 等）。**保留模板中的 `<aie-root>` 占位符不替换**（公开仓库不能含本机路径）。同时维护 `<target>/.claude/settings.local.json` 的 `aie_root` 字段为第 1 步算出的实际路径（merge 而非覆盖现有 settings.local.json 内容）；并确保 `<target>/.gitignore` 含 `.claude/settings.local.json`
      - 对每个**拒绝**项：跳过推送
      - 把所有决定写入 `<target>/CLAUDE.md` 的"## ai-excellence 可选规范"段（段不存在则新建）
 
