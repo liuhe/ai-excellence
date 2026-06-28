@@ -258,33 +258,7 @@ user_invocable: true
 集成入口：`<aie-root>/docs/system-modeling-methodology.md`
 ````
 
-**启用后推送内容 D-2**：在 `<target>/.claude/skills/model-view/` 创建 `SKILL.md`（**注意**：Claude Code 项目级 skill 必须是 `<name>/SKILL.md` 目录结构，不是 flat `<name>.md`，否则不会被发现）：
-
-````markdown
----
-name: model-view
-description: 启动 DCDDP viewer 加载本工程模型目录
-user_invocable: true
----
-
-# /model-view
-
-启动 DCDDP v6.2 model-viewer，加载本工程的模型目录（默认 `./docs/modeling/`，可在 CLAUDE.md "## 系统建模方法论" 段中调整）。
-
-## 步骤
-
-> 下面 `<aie-root>` 来自 `.claude/settings.local.json` 的 `aie_root` 字段。运行命令时先读出再替换。
-
-1. 解析模型目录：默认 `./docs/modeling/`，转换为绝对路径。
-2. 在 `<aie-root>/methodology/app/public/` 下创建软链 `<工程名> -> <模型目录绝对路径>`。若已存在且指向相同路径则跳过；指向不同路径则警告用户后用新路径覆盖（避免 viewer 加载到错误内容）。
-3. 在 `<aie-root>/methodology/app/public/models.json` 中确保有本工程的注册项（缺则追加）。
-4. 检查端口 5173：`lsof -i :5173`。
-   - 已占用：直接返回 viewer URL
-   - 未占用：`cd <aie-root>/methodology/app/ && npm run dev`（后台启动）
-5. 输出 viewer URL（`http://localhost:5173/`），提示用户在 viewer 中切换到本工程模型。
-````
-
-**启用后推送内容 D-3**：安装静态 viewer 到 `<target>/docs/modeling/viewer/`（不复制模型文件）：
+**启用后推送内容 D-2**：安装静态 viewer 到 `<target>/docs/modeling/viewer/`（不复制模型文件）：
 
 1. 在 `<aie-root>/methodology/app/` 跑 `npm install`（若缺 `node_modules`）+ `npm run build`。
 2. 清理 `<aie-root>/methodology/app/dist/` 中由 Vite 从 `public/` 带出的模型目录/软链内容，只保留 viewer 顶层资源（如 `index.html`、`assets/`、`favicon.svg`、`icons.svg`）。
@@ -296,10 +270,11 @@ user_invocable: true
 4. 把处理后的 dist 内容复制到 `<target>/docs/modeling/viewer/`。
 5. 在 `<target>/.gitignore` 中确保有 `docs/modeling/viewer/` 一行（安装产物不入 git）。
 6. 若旧 `<target>/.claude/skills/model-build/` 存在，列入修改方案并在用户确认后移除；该 skill 已废弃，静态 viewer 安装是 `system-modeling` 的默认推送内容。
-7. 若旧 `<target>/docs/modeling/static/` 存在，列入修改方案并在用户确认后删除；旧 static 是已废弃 build 模式产物，不再保留。
-8. 从 `<target>/.gitignore` 移除 `docs/modeling/static/` 条目，确保只保留 `docs/modeling/viewer/`。
+7. 若旧 `<target>/.claude/skills/model-view/` 存在，列入修改方案并在用户确认后移除；该 skill 已废弃，viewer 分发只走"每个受管工程自持静态 viewer"路径，不再维护 aie 端共享 dev viewer。
+8. 若旧 `<target>/docs/modeling/static/` 存在，列入修改方案并在用户确认后删除；旧 static 是已废弃 build 模式产物，不再保留。
+9. 从 `<target>/.gitignore` 移除 `docs/modeling/static/` 条目，确保只保留 `docs/modeling/viewer/`。
 
-合规检查：`<target>/docs/modeling/viewer/index.html` 存在，`<target>/docs/modeling/viewer/assets/` 存在，`<target>/docs/modeling/viewer/models.json` 等于 `[{ "name": "<工程名>", "path": ".." }]`，`<target>/.gitignore` 包含 `docs/modeling/viewer/` 且不包含 `docs/modeling/static/`，`<target>/.claude/skills/model-build/` 不存在，且 `<target>/docs/modeling/static/` 不存在。任一不符即列入修改方案。
+合规检查：`<target>/docs/modeling/viewer/index.html` 存在，`<target>/docs/modeling/viewer/assets/` 存在，`<target>/docs/modeling/viewer/models.json` 等于 `[{ "name": "<工程名>", "path": ".." }]`，`<target>/.gitignore` 包含 `docs/modeling/viewer/` 且不包含 `docs/modeling/static/`，`<target>/.claude/skills/model-build/` 不存在，`<target>/.claude/skills/model-view/` 不存在，且 `<target>/docs/modeling/static/` 不存在。任一不符即列入修改方案。
 
 安装后无需 dev server 即可浏览：`cd <target> && python -m http.server -d docs/modeling 8080`，浏览器打开 `http://localhost:8080/viewer/?model=<工程名>`。模型文件仍保留在 `docs/modeling/` 原位置，viewer 通过相对路径读取。
 
@@ -347,12 +322,12 @@ user_invocable: true
    - 检查 `<target>/knowledge-structure.md` 是否存在
    - **F 节合规复检**：若 `<target>` **不是** ai-excellence 自身，对 F-1 表里每条逐项 `diff -q <源> <目标>`，缺失或不一致即列入修改方案
    - **可选规范**：读 `<target>/CLAUDE.md` 中的"## ai-excellence 可选规范"段，列出每项规范的当前状态（启用 / 拒绝 / 未决）。段不存在视为所有规范均"未决"
-   - **已启用项的合规复检（不可跳过）**：对每个标记为 ✅ 的规范，按其推送清单（D-1 / D-2 / D-3、E-1 等）**逐项校验**目标是否仍合规：
+   - **已启用项的合规复检（不可跳过）**：对每个标记为 ✅ 的规范，按其推送清单（D-1 / D-2、E-1 等）**逐项校验**目标是否仍合规：
      - 文件类推送（skill SKILL.md、agent .md）：`diff -q <源> <目标>` 必须为空；缺失或不一致即不合规
      - CLAUDE.md 段类推送：检查目标段内容是否包含规范要求的全部要点（不要求字面完全相同）
-     - 安装产物类推送（如 D-3 `docs/modeling/viewer/`）：按该节列出的文件存在性、配置内容和 `.gitignore` 条目逐项检查
+     - 安装产物类推送（如 D-2 `docs/modeling/viewer/`）：按该节列出的文件存在性、配置内容和 `.gitignore` 条目逐项检查
      - 任一不合规即列入修改方案，**与未决项的新启用一起进入第 4 步**
-   - 该步骤的目的：本工程后续给已有规范追加推送内容时（如 system-modeling 后续追加 D-3 viewer 安装），下次 `/aie-apply` 必须能自动检测旧实例的缺口并补推。不能因为"用户没明说要改这项规范"就跳过校验。
+   - 该步骤的目的：本工程后续给已有规范追加或调整推送内容时，下次 `/aie-apply` 必须能自动检测旧实例的缺口并补推/清理。不能因为"用户没明说要改这项规范"就跳过校验。
 
 3. **输出审查报告**
    - 列出缺失项与不合规项
