@@ -18,6 +18,7 @@ export function AppDomainDiagram({ app }: { app: Application }) {
   if (!dm) return null
 
   const roles = dm.roles || []
+  const entities = dm.entities || []
   const aggs = dm.aggregates || []
   const vos = dm.value_objects || []
   const repos = dm.repositories || []
@@ -25,13 +26,14 @@ export function AppDomainDiagram({ app }: { app: Application }) {
   const evts = dm.domain_events || []
 
   if (
-    roles.length + aggs.length + vos.length + repos.length + svcs.length + evts.length === 0
+    roles.length + entities.length + aggs.length + vos.length + repos.length + svcs.length + evts.length === 0
   ) return null
 
-  type Kind = 'role' | 'aggregate' | 'vo' | 'repository' | 'service' | 'event' | 'inner-entity' | 'inner-vo'
+  type Kind = 'role' | 'entity' | 'aggregate' | 'vo' | 'repository' | 'service' | 'event' | 'inner-entity' | 'inner-vo'
 
   const STYLE: Record<Kind, { stroke: string; bg: string; label: string; dashed: boolean }> = {
     role:        { stroke: '#eab308', bg: '#fef9c3', label: 'Role',       dashed: true  }, // 黄
+    entity:      { stroke: '#7c3aed', bg: '#f5f3ff', label: 'Entity',     dashed: false }, // 深紫（独立实体）
     aggregate:   { stroke: '#7c3aed', bg: '#f5f3ff', label: 'Aggregate (root)', dashed: false }, // 深紫（聚合 = 其根实体）
     vo:          { stroke: '#06b6d4', bg: '#cffafe', label: 'VO',         dashed: false }, // 青
     repository:  { stroke: '#475569', bg: '#f1f5f9', label: 'Repository', dashed: false }, // 深灰
@@ -54,6 +56,9 @@ export function AppDomainDiagram({ app }: { app: Application }) {
   const NH_INNER = 44
 
   for (const r of roles) g.setNode(`role:${r.name}`, { kind: 'role', label: r.name || '', width: NW, height: NH } as NodeData)
+
+  // 独立实体（无内含成员的领域对象，详见 schema NOTE 18）
+  for (const e of entities) g.setNode(`ent:${e.name}`, { kind: 'entity', label: e.name || '', width: NW, height: NH } as NodeData)
 
   // Aggregate node uses root entity name as its label (per schema NOTE 17 viewer rule)
   for (const a of aggs) {
@@ -82,6 +87,7 @@ export function AppDomainDiagram({ app }: { app: Application }) {
   // (target_kind, target) → node id
   const TARGET_KIND_PREFIX: Record<string, string> = {
     'role': 'role:',
+    'entity': 'ent:',
     'aggregate': 'agg:',
     'value-object': 'vo:',
     'repository': 'repo:',
@@ -95,7 +101,7 @@ export function AppDomainDiagram({ app }: { app: Application }) {
       const id = TARGET_KIND_PREFIX[targetKind] + target
       return g.hasNode(id) ? id : null
     }
-    for (const pref of ['role:', 'agg:', 'vo:', 'repo:', 'svc:', 'evt:']) {
+    for (const pref of ['role:', 'ent:', 'agg:', 'vo:', 'repo:', 'svc:', 'evt:']) {
       if (g.hasNode(pref + target)) return pref + target
     }
     return null
@@ -120,12 +126,15 @@ export function AppDomainDiagram({ app }: { app: Application }) {
     }
   }
 
-  // Repository → Aggregate（manages，特殊视觉）
+  // Repository → Aggregate / Entity（manages，特殊视觉）
   for (const r of repos) {
-    const aggName = repositoryAggregateOf(r.relationships)
-    if (aggName && g.hasNode(`agg:${aggName}`)) edges.push({ from: `repo:${r.name}`, to: `agg:${aggName}`, type: 'manages' })
+    const target = repositoryAggregateOf(r.relationships)
+    if (target) {
+      const tid = g.hasNode(`agg:${target}`) ? `agg:${target}` : (g.hasNode(`ent:${target}`) ? `ent:${target}` : null)
+      if (tid) edges.push({ from: `repo:${r.name}`, to: tid, type: 'manages' })
+    }
     // Repository 其他关系
-    pushEdges(`repo:${r.name}`, (r.relationships || []).filter(x => !(x.kind === 'composition' && x.target_kind === 'aggregate')))
+    pushEdges(`repo:${r.name}`, (r.relationships || []).filter(x => !(x.kind === 'composition' && (x.target_kind === 'aggregate' || x.target_kind === 'entity'))))
   }
 
   // Aggregate 自身的关系 + 内嵌部件
@@ -149,7 +158,8 @@ export function AppDomainDiagram({ app }: { app: Application }) {
     }
   }
 
-  // 顶层 VO / Service / Event / Role
+  // 顶层 Entity / VO / Service / Event / Role
+  for (const e of entities) pushEdges(`ent:${e.name}`, e.relationships)
   for (const v of vos) pushEdges(`vo:${v.name}`, v.relationships)
   for (const s of svcs) pushEdges(`svc:${s.name}`, s.relationships)
   for (const e of evts) pushEdges(`evt:${e.name}`, e.relationships)
@@ -167,6 +177,7 @@ export function AppDomainDiagram({ app }: { app: Application }) {
     <div className="bg-white rounded-xl border border-slate-200 p-4 overflow-x-auto mb-6">
       <div className="text-xs text-slate-500 mb-2 flex flex-wrap gap-3">
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border" style={{ background: STYLE.role.bg, borderColor: STYLE.role.stroke, borderStyle: 'dashed' }} />Role</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border" style={{ background: STYLE.entity.bg, borderColor: STYLE.entity.stroke }} />Entity</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border" style={{ background: STYLE.aggregate.bg, borderColor: STYLE.aggregate.stroke }} />Aggregate (root)</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border" style={{ background: STYLE['inner-entity'].bg, borderColor: STYLE['inner-entity'].stroke }} />聚合内实体</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border" style={{ background: STYLE['inner-vo'].bg, borderColor: STYLE['inner-vo'].stroke }} />聚合内 VO</span>

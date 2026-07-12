@@ -1188,6 +1188,25 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
               </ul>
             </Card>
           )}
+          {dm.entities && dm.entities.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">实体 ({dm.entities.length})</h3>
+              <ul className="space-y-1">
+                {dm.entities.map((e, j) => {
+                  const be = businessEntityOf(e.relationships)
+                  const roles = rolesOf(e.relationships)
+                  return (
+                    <li key={j} className="flex items-center gap-2 text-sm flex-wrap">
+                      <span>▪</span>
+                      <span className="font-medium text-slate-700">{e.name}</span>
+                      {be && (<><span className="text-xs text-slate-400">→</span><Badge color="purple"><Link name={be} model={model} onNavigate={onNavigate} /></Badge></>)}
+                      {roles.length > 0 && (<><span className="text-xs text-slate-400">扮演:</span>{roles.map((r, k) => <Badge key={k} color="amber">{r}</Badge>)}</>)}
+                    </li>
+                  )
+                })}
+              </ul>
+            </Card>
+          )}
           {dm.aggregates && dm.aggregates.length > 0 && (
             <Card>
               <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">聚合 ({dm.aggregates.length})</h3>
@@ -1300,6 +1319,27 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
       )
     }
 
+    case 'app-entity': {
+      const app = apps[idx]
+      const entity = app?.domain_model?.entities?.[idx2]
+      if (!entity) return <Empty />
+      const roles = rolesOf(entity.relationships)
+      const be = businessEntityOf(entity.relationships)
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-slate-800">▪ {entity.name}</h2>
+          <div className="flex gap-2 items-center flex-wrap">
+            <Badge color="green"><Link name={n(app!, 'name', '名称')} model={model} onNavigate={onNavigate} /></Badge>
+            <Badge color="gray">实体（Entity）</Badge>
+            {be && (<><span className="text-xs text-slate-500">业务实体:</span><Badge color="purple"><Link name={be} model={model} onNavigate={onNavigate} /></Badge></>)}
+            {roles.length > 0 && (<><span className="text-xs text-slate-500">扮演角色:</span>{roles.map((r, k) => <Badge key={k} color="amber">{r}</Badge>)}</>)}
+          </div>
+          {entity.fields && entity.fields.length > 0 && (<Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">字段</h3><FieldsTable fields={entity.fields} /></Card>)}
+          {entity.notes && (<Card><h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">备注</h3><p className="text-sm text-slate-600"><MD basePath={app!._sourceDir || model.basePath}>{entity.notes}</MD></p></Card>)}
+        </div>
+      )
+    }
+
     case 'app-vo': {
       const app = apps[idx]
       const vo = app?.domain_model?.value_objects?.[idx2]
@@ -1326,9 +1366,12 @@ export function ItemDetail({ model, selectedId, onNavigate }: Props) {
       const dm = app?.domain_model
       const roleName = role.name || ''
       if (dm) {
+        for (const e of (dm.entities || [])) {
+          if (rolesOf(e.relationships).includes(roleName)) implementers.push({ kind: '实体', name: e.name || '' })
+        }
         for (const agg of (dm.aggregates || [])) {
           if (rolesOf(agg.relationships).includes(roleName)) implementers.push({ kind: '聚合', name: agg.name || '' })
-          for (const e of (agg.entities || [])) if (rolesOf(e.relationships).includes(roleName)) implementers.push({ kind: '实体', name: `${agg.name}.${e.name}` })
+          for (const e of (agg.entities || [])) if (rolesOf(e.relationships).includes(roleName)) implementers.push({ kind: '聚合内实体', name: `${agg.name}.${e.name}` })
           for (const v of (agg.value_objects || [])) if (rolesOf(v.relationships).includes(roleName)) implementers.push({ kind: '聚合内 VO', name: `${agg.name}.${v.name}` })
         }
         for (const v of (dm.value_objects || [])) {

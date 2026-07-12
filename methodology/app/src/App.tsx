@@ -105,7 +105,7 @@ function buildTree(model: Model): TreeNode[] {
           const ucs = (app.use_cases || app.用例 || [])
           const pages = (app.pages || app.页面 || [])
           const dm = app.domain_model
-          const hasDomainModel = !!(dm && (dm.roles?.length || dm.aggregates?.length || dm.value_objects?.length || dm.repositories?.length || dm.domain_services?.length || dm.domain_events?.length))
+          const hasDomainModel = !!(dm && (dm.roles?.length || dm.entities?.length || dm.aggregates?.length || dm.value_objects?.length || dm.repositories?.length || dm.domain_services?.length || dm.domain_events?.length))
           return {
             id: `app:${i}`, label: n(app, 'name', '名称'), icon: '▸',
             tag: (app.type || app.类型 || '') as string,
@@ -115,15 +115,20 @@ function buildTree(model: Model): TreeNode[] {
                 id: `app-domain:${i}`, label: '领域模型', icon: '🧱',
                 children: [
                   ...(dm!.roles || []).map((r, j) => ({ id: `app-role:${i}:${j}`, label: r.name || '', icon: '🎭' })),
+                  ...(dm!.entities || []).map((e, j) => ({ id: `app-entity:${i}:${j}`, label: e.name || '', icon: '▪' })),
                   ...(dm!.aggregates || []).map((a, j) => {
                     const innerEntities = a.entities || []
                     const innerVOs = a.value_objects || []
                     const aggChildren: TreeNode[] = []
-                    innerEntities.forEach((e, k) => aggChildren.push({
-                      id: `app-agg-entity:${i}:${j}:${k}`,
-                      label: e.name || '',
-                      icon: e.name === a.root ? '★' : '▪',
-                    }))
+                    // 跳过 root entity：aggregate 节点本身已代表 root
+                    innerEntities.forEach((e, k) => {
+                      if (e.name === a.root) return
+                      aggChildren.push({
+                        id: `app-agg-entity:${i}:${j}:${k}`,
+                        label: e.name || '',
+                        icon: '▪',
+                      })
+                    })
                     innerVOs.forEach((v, k) => aggChildren.push({ id: `app-agg-vo:${i}:${j}:${k}`, label: v.name || '', icon: '◇' }))
                     return {
                       id: `app-agg:${i}:${j}`, label: a.name || '', icon: '◆',

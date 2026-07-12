@@ -307,6 +307,7 @@ fields:
 
 | 构造块 | 含义 | 例 |
 |--------|------|-----|
+| **Entity** | 独立实体：有身份、可持久化，但**无内含成员、无聚合级不变量**——不需要 Aggregate 外壳 | `Workspace`（只有自身字段，没有内含子实体或 VO） |
 | **Aggregate** | 根实体 + 内含实体 + VO + 事务边界 + 不变量；root 是对 entities[] 中一员的名字引用 | `OrderAggregate` (root: Order, entities: [Order, OrderLine], value_objects: [ShippingAddress]) |
 | **Value Object** | 不可变，按值相等 | `Money`, `Address`, `RouteState` |
 | **Repository** | 对聚合的集合抽象 | `OrderRepository`（findById, save, findByCustomer 等） |
@@ -365,9 +366,45 @@ domain_model:
 
 详见 schema NOTE 17。
 
+### Entity 还是 Aggregate（什么时候不裹聚合）
+
+应用领域模型里同一个领域对象有两个槽位可挂——`domain_model.entities[]`（独立实体）或 `domain_model.aggregates[]`（聚合）。判别准则——同时满足全部，写为 entity；否则写为 aggregate：
+
+- 没有内含其他实体
+- 没有内含 value object
+- 没有聚合级不变量（invariants）
+
+```yaml
+# applications/<app>.yaml
+domain_model:
+  entities:                          # 独立实体——只有自己
+    - name: Workspace
+      fields:
+        - id: "Long, primary key"
+        - name: "String, ..."
+      relationships:
+        - kind: implements
+          target: Workspace
+          target_kind: business-entity
+  aggregates:                        # 聚合——有内含成员或不变量
+    - name: ProjectWorkspaceAggregate
+      root: ProjectWorkspace
+      entities:
+        - name: ProjectWorkspace
+          fields: [...]
+        - name: Tab                  # 内含子实体
+          fields: [...]
+      invariants:
+        - "活跃 Tab 同一时刻只能有一个"
+```
+
+动机：单实体、无内含成员的"聚合"实际上和实体没区别——多裹一层只是命名重复（`AccountAggregate` 包 `Account` 实体）、可视化噪音（侧边栏 ◆ Account → ★ Account 两层）、读起来啰嗦。一旦该领域对象生长出内含成员或不变量，再升格为 aggregate。
+
+跨层映射（`implements business-entity`）：entity 与 aggregate 都可挂。详见 schema NOTE 18。
+
 ## 12. 统一关系模型（Relationships）
 
-每个构造块（business entity / aggregate / VO / repository / service / event / role）都用同一套 `relationships:` 段表达**出向**关系。详见 schema NOTE 12。
+每个构造块（business entity / entity / aggregate / VO / repository / service / event / role）都用同一套 `relationships:` 段表达**出向**关系。详见 schema NOTE 12。
 
 ### 4 种 kind
 
@@ -384,7 +421,7 @@ domain_model:
 relationships:
   - kind: depends-on | implements | associates | composition
     target: <name>                         # 目标构造块名
-    target_kind: business-entity | role | aggregate | value-object | repository | domain-service | domain-event
+    target_kind: business-entity | role | entity | aggregate | value-object | repository | domain-service | domain-event
                                            # optional, 跨类型同名时必填
     bidirectional: true                    # optional, 仅 associates 可设
     cardinality: one-to-one | one-to-many | many-to-one | many-to-many   # optional

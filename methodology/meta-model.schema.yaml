@@ -228,7 +228,19 @@ application_detail_yaml_schema:
         relationships: <Relationship[]>     # optional
         notes: string                       # optional
 
+    entities:                                # optional — 独立实体（不裹聚合）
+                                            # 当一个领域对象只有 root 一个实体、无内含 VO、无聚合级不变量时，
+                                            # 它本质就是一个 entity，不必再裹一层 aggregate；直接放此处。
+                                            # 详见 SCHEMA NOTE 18。
+      - name: string                        # PascalCase
+        relationships: <Relationship[]>     # optional — e.g., implements BusinessEntity / depends-on 其他实体
+        fields:
+          - field_name: "Type, description"
+        notes: string                       # optional
+
     aggregates:                              # 聚合：根实体 + 内含实体 + VO + 不变量
+                                            # 仅在"有内含实体 / 有内含 VO / 有聚合级不变量"时才用；
+                                            # 否则改写为上面的 entities。详见 SCHEMA NOTE 18。
       - name: string                        # PascalCase, e.g., AccountAggregate
         root: string                        # 必须引用 entities[] 中已定义的某个实体名（本层实体）。
                                             # 不在此声明字段——字段在被引用的 entities[] 项里。
@@ -277,7 +289,7 @@ application_detail_yaml_schema:
 relationship_schema:
   kind: depends-on | implements | associates | composition  # 详见 SCHEMA NOTE 12
   target: string                          # 目标构造块名
-  target_kind: business-entity | role | aggregate | value-object | repository | domain-service | domain-event
+  target_kind: business-entity | role | entity | aggregate | value-object | repository | domain-service | domain-event
                                           # optional, 帮助消歧（同名跨类型时必须提供）
   bidirectional: boolean                  # optional, default false; 仅 associates 可设 true
   cardinality: one-to-one | one-to-many | many-to-one | many-to-many
@@ -601,6 +613,33 @@ deployment_yaml_schema:
 #      - 应用层的 root entity 与对应业务实体常常字段相同——但本层独立声明，
 #        以便表达"应用层投影"（增减字段、运行时状态、技术性字段）。
 #      - 字段可能与业务实体同步，也可能裁剪 / 增补；具体看应用需要。
+
+# 18. ENTITY vs AGGREGATE — 何时不裹聚合
+#
+#    应用领域模型里同一个领域对象有两个槽位可挂：
+#      - domain_model.entities[]   独立实体（无聚合包装）
+#      - domain_model.aggregates[] 聚合（含 root + 内含实体 + 内含 VO + 不变量）
+#
+#    判别准则——同时满足全部，写为 entity；否则写为 aggregate：
+#      a) 没有内含其他实体
+#      b) 没有内含 value object
+#      c) 没有聚合级不变量（invariants）
+#
+#    动机：单实体、无内含成员的"聚合"实际上和实体没区别——多裹一层只是命名重复
+#    （AccountAggregate 包 Account 实体）、可视化噪音（侧边栏 ◆ Account → ★ Account
+#    两层）、读起来啰嗦。一旦该领域对象生长出内含成员或不变量，再升格为 aggregate。
+#
+#    跨层映射（implements business-entity）：entity 与 aggregate 都可挂
+#    `relationships: [{kind: implements, target: <BusinessEntityName>, target_kind: business-entity}]`。
+#
+#    被引用方式：
+#      - 其他构造块引用此 entity 时用 target_kind: entity；
+#      - 仓储管理它时仍可用 composition + target_kind: entity（不强制必须为 aggregate）。
+#
+#    Viewer 责任：
+#      - 侧边栏 domain_model 节点下扁平列出 roles / entities / aggregates / VO / repo / service / event；
+#      - entity 节点为叶子（无折叠）；
+#      - 应用领域模型图中以独立实体节点呈现，不嵌套外框。
 
 # 16. EXTENSIBILITY
 #

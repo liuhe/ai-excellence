@@ -38,9 +38,10 @@ export function businessEntityOf(rels: Relationship[] | undefined): string | und
   return firstTargetOf(rels, 'implements', 'business-entity')
 }
 
-// 取仓储管理的聚合（kind=composition, target_kind=aggregate）
+// 取仓储管理的目标（kind=composition, target_kind=aggregate 或 entity）
+// 优先聚合；若无则取实体（schema NOTE 18 允许仓储直接管理独立实体）
 export function repositoryAggregateOf(rels: Relationship[] | undefined): string | undefined {
-  return firstTargetOf(rels, 'composition', 'aggregate')
+  return firstTargetOf(rels, 'composition', 'aggregate') || firstTargetOf(rels, 'composition', 'entity')
 }
 
 // 业务模型层：把每个 entity 的 relationships 聚合成全局的 (from, to, ...) 列表，给 ER 图用

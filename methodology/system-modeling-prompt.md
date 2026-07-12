@@ -102,7 +102,7 @@ archetype: moment-interval | role | party-place-thing | description   # optional
 relationships:                                                          # optional, 出向关系（统一关系模型，见 schema NOTE 12）
   - kind: depends-on | implements | associates | composition
     target: <name>                                                      # 目标构造块名
-    target_kind: business-entity | role | aggregate | ...               # optional, 跨类型同名时必填
+    target_kind: business-entity | role | entity | aggregate | ...      # optional, 跨类型同名时必填
     bidirectional: true                                                 # optional, 仅 associates 可设
     cardinality: one-to-one | one-to-many | many-to-one | many-to-many  # optional, associates / composition
     via: <field name>                                                   # optional
@@ -187,7 +187,13 @@ domain_model:                                                # OPTIONAL — DDD 
       methods: [<string>, ...]
       relationships: [<Relationship>, ...]                   # optional
       notes: <string>                                        # optional
-  aggregates:
+  entities:                                                  # optional — 独立实体（无内含成员、无聚合级不变量），不必裹 aggregate
+    - name: <PascalCase>
+      relationships: [<Relationship>, ...]                   # optional — e.g., implements business-entity / depends-on
+      fields:
+        - <fieldName>: "<Type>, <description>"
+      notes: <string>                                        # optional
+  aggregates:                                                # 仅当"有内含实体 / 有内含 VO / 有聚合级不变量"时才用；否则改写为上面 entities
     - name: <PascalCase>
       root: <RootEntityName>                                 # 必须引用下面 entities[] 中已定义的某个实体名；
                                                              # 不在此声明字段；不能引用业务实体（业务实体只通过下面 relationships 跨层映射）
@@ -326,9 +332,10 @@ Traceability: **page → app use case → system use case → business use case*
 - 内容：本 app 的代码层结构如何实现业务概念；每个 app 一份。受众：该 app 的开发者。
 - 写在 `applications/<app>.yaml` 的 `domain_model:` 段（可选，简单 frontend / proxy / external 通常不需要）。
 - 用 DDD 构造块：
-  - **Aggregate（聚合）**：根实体 + 内含实体 + VO + 事务边界 + 不变量。用 `relationships` 段表达：`{kind: implements, target: <BusinessEntity>, target_kind: business-entity}` 跨层映射；`{kind: implements, target: <Role>, target_kind: role}` 实现本 app 内 Role。
+  - **Entity（独立实体）**：有身份、无内含成员、无聚合级不变量——直接放 `entities:`，不必裹 aggregate。
+  - **Aggregate（聚合）**：根实体 + 内含实体 + VO + 事务边界 + 不变量。仅在"有内含实体 / 有内含 VO / 有不变量"时才用；否则降级为 Entity。用 `relationships` 段表达：`{kind: implements, target: <BusinessEntity>, target_kind: business-entity}` 跨层映射；`{kind: implements, target: <Role>, target_kind: role}` 实现本 app 内 Role。
   - **Value Object（值对象）**：不可变，按值相等。可在聚合内或跨聚合共享。
-  - **Repository（仓储）**：对聚合的集合抽象。
+  - **Repository（仓储）**：对聚合 / 实体的集合抽象。
   - **Domain Service（领域服务）**：不属单一聚合的领域逻辑。
   - **Domain Event（领域事件）**：业务上有意义的状态变化通知。
 - 同一业务实体可在不同 app 有不同的 DDD 实现（甚至有的 app 不实现）。

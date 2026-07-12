@@ -159,11 +159,19 @@ export type RelationshipKind = 'depends-on' | 'implements' | 'associates' | 'com
 export type RelationshipTargetKind =
   | 'business-entity'
   | 'role'
+  | 'entity'
   | 'aggregate'
   | 'value-object'
   | 'repository'
   | 'domain-service'
   | 'domain-event';
+
+export interface AppEntity {
+  name?: string;
+  relationships?: Relationship[];
+  fields?: Record<string, string>[];
+  notes?: string;
+}
 
 export interface Relationship {
   kind?: RelationshipKind;
@@ -325,6 +333,7 @@ export interface AppDomainEvent {
 
 export interface AppDomainModel {
   roles?: AppRole[];
+  entities?: AppEntity[];
   aggregates?: AppAggregate[];
   value_objects?: AppValueObject[];
   repositories?: AppRepository[];
