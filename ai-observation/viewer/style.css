@@ -1,0 +1,115 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  color: #222;
+  background: #f7f8fa;
+}
+body { display: flex; height: 100vh; overflow: hidden; }
+
+#sidebar {
+  width: 340px;
+  border-right: 1px solid #d8dbe0;
+  background: #fff;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+#sidebar header {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eee;
+  display: flex; align-items: center; justify-content: space-between;
+}
+#sidebar header h1 { font-size: 14px; margin: 0; letter-spacing: 0.5px; }
+#refresh-btn {
+  border: 1px solid #d8dbe0; background: #fafafa;
+  border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 14px;
+}
+.conv-list { overflow-y: auto; flex: 1; padding: 6px; }
+
+.conv-item {
+  padding: 8px 10px; margin: 3px 0; border-radius: 6px;
+  cursor: pointer; border: 1px solid transparent;
+}
+.conv-item:hover { background: #eef1f5; }
+.conv-item.active { background: #e6efff; border-color: #a8c5ff; }
+.conv-item.child { margin-left: 16px; border-left: 2px solid #cdd3dc; padding-left: 10px; }
+
+.conv-item .title { font-weight: 600; font-size: 12px; }
+.conv-item .subtitle { color: #666; font-size: 11px; margin-top: 2px; }
+.conv-item .counts { color: #888; font-size: 11px; margin-top: 4px; }
+
+#main { flex: 1; overflow-y: auto; padding: 18px 24px; }
+.empty-hint { color: #888; padding: 40px; text-align: center; }
+.hidden { display: none; }
+
+.conv-detail h2 { font-size: 15px; margin: 0 0 6px 0; }
+.conv-detail .conv-meta {
+  color: #666; font-size: 11px; margin-bottom: 14px;
+  font-family: SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.timeline { }
+.item {
+  border-radius: 6px; padding: 10px 12px; margin: 8px 0;
+  border: 1px solid #e2e5eb; background: #fff;
+}
+.item .head {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 600; font-size: 12px; margin-bottom: 4px;
+}
+.item .badge {
+  display: inline-block; padding: 1px 6px; border-radius: 3px;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.badge.userinput { background: #cceffb; color: #036c9c; }
+.badge.generation { background: #fff2cc; color: #8a6d00; }
+.badge.toolcall { background: #e0e8f8; color: #364a89; }
+.badge.hook { background: #e9e2f5; color: #5236a3; }
+
+.item .time { color: #999; font-family: SFMono-Regular, Menlo, monospace; font-size: 10px; margin-left: auto; }
+.item .body { color: #333; font-size: 12px; }
+
+.item.userinput { background: #f2fafd; border-color: #c8e6f2; }
+.item.generation { background: #fefaf0; border-color: #eadcae; }
+.item.toolcall { background: #f6f8fd; border-color: #d5dded; }
+
+.pill {
+  display: inline-block; background: #eef1f5; color: #444;
+  padding: 1px 6px; border-radius: 3px;
+  font-size: 10px; margin: 0 4px 0 0;
+  font-family: SFMono-Regular, Menlo, monospace;
+}
+
+.trigger { color: #555; font-size: 11px; margin: 4px 0; }
+.trigger a { color: #036c9c; text-decoration: none; cursor: pointer; }
+.trigger a:hover { text-decoration: underline; }
+
+.text-block {
+  white-space: pre-wrap; word-break: break-word;
+  background: #f5f6f8; border-left: 3px solid #cdd3dc;
+  padding: 6px 10px; margin: 6px 0; border-radius: 3px;
+  font-family: SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px; max-height: 300px; overflow-y: auto;
+}
+.text-block.thinking { border-left-color: #ba9adf; background: #f9f4ff; }
+.text-block.args { border-left-color: #cdd3dc; }
+.text-block.result { border-left-color: #a8d9a8; }
+.text-block.result.error { border-left-color: #d99a9a; background: #fff5f5; }
+
+.spawn-link {
+  display: inline-block; margin-top: 6px;
+  padding: 4px 8px; border-radius: 4px;
+  background: #e6efff; color: #036c9c; cursor: pointer;
+  border: 1px solid #a8c5ff; font-size: 11px;
+}
+.spawn-link:hover { background: #d4e4ff; }
+
+.hooks-inline {
+  margin-top: 4px; font-size: 10px; color: #666;
+}
+.hooks-inline .pill { font-size: 9px; }
+
+details { margin-top: 4px; }
+details summary { cursor: pointer; font-size: 11px; color: #555; padding: 2px 0; }

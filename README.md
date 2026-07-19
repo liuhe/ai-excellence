@@ -11,10 +11,10 @@ AI Excellence 把统一的 AI 协作规范应用到所有被管工程。
 
 ### 1. 添加需要管理的工程
 
-将工程软链到 `projects/` 目录：
+将工程软链到 `receivers/` 目录：
 
 ```bash
-ln -s /path/to/your-project projects/your-project
+ln -s /path/to/your-project receivers/your-project
 ```
 
 ### 2. 应用规范到被管工程
@@ -29,7 +29,9 @@ ln -s /path/to/your-project projects/your-project
 
 | 目录 | 说明 |
 |------|------|
-| `projects/` | 被管工程的软链入口 |
+| `receivers/` | 受管工程的软链入口（不入 git） |
+| `projects/` | 本工程 initiative 容器（每个 `projects/<name>/` 含 overview/tasks/log） |
+| `methodology/`, `ai-observation/`, … | 能力模块源码（跟对应 `projects/<name>/` initiative 呼应） |
 | `.claude/skills/aie-apply.md` | `/aie-apply` 命令的实现，规范本身就内嵌在里面 |
 | `docs/methodology.md` | 背景方法论 |
 | `.claude_global/` | 含 3 个软链 → `~/.claude/{CLAUDE.md,settings.json,settings.local.json}`，本地便利访问，不入 git |

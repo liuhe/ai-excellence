@@ -24,7 +24,7 @@ user_invocable: true
 | `name` | ✅ | 人读用例名 |
 | `prompt` | ✅ | 喂给被测 AI 的 prompt 原文 |
 | `criteria` | ✅ | 判官评估标准（YAML 列表） |
-| `fixture_project` | ⏹ | 测试要在哪个 `projects/<x>` 上下文里跑（方法论回归测试需要） |
+| `fixture_project` | ⏹ | 测试要在哪个 `receivers/<x>` 上下文里跑（方法论回归测试需要） |
 | `forbidden_reads` | ⏹ | AI 不准读的路径（防作弊） |
 | `judge_hints` | ⏹ | 给判官的额外提示 |
 
@@ -40,7 +40,7 @@ user_invocable: true
 
 对每个用例：
 
-- **`fixture_project` 可达**：若有此字段，检查 `./projects/<fixture_project>` 存在（软链解析后真实路径有效）。不可达 → 跳过该用例并在报告里标 `skipped: fixture unreachable`。
+- **`fixture_project` 可达**：若有此字段，检查 `./receivers/<fixture_project>` 存在（软链解析后真实路径有效）。不可达 → 跳过该用例并在报告里标 `skipped: fixture unreachable`。
 - **`claude` CLI 可用**：`which claude` 失败 → 整轮退出。
 
 ### 3. 跑测试
@@ -118,7 +118,7 @@ user_invocable: true
 ### 6.1 前置闸
 
 - **当前工作树必须 clean**（无未提交改动）。脏 → 拒绝开工，提示用户先 commit/stash。
-- 若是 ai-excellence 仓库本身，确保 `projects/` 下 fixture 软链能被 worktree 继承（git worktree 默认会带过去）。跑一遍前置检查 §2 验证。
+- 若是 ai-excellence 仓库本身，确保 `receivers/` 下 fixture 软链能被 worktree 继承（git worktree 默认会带过去）。跑一遍前置检查 §2 验证。
 
 ### 6.2 建 worktree + 分支
 

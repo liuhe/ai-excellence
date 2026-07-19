@@ -6,11 +6,11 @@ user_invocable: true
 
 # /aie-test-add [project] [name]
 
-把一个测试用例写入 `projects/<project>` 软链对应的受管工程的 `.claude/aie-tests/<name>.md`。aie-improve 会跑这些用例评估受管工程的 AI 协作配置是否真的起效。
+把一个测试用例写入 `receivers/<project>` 软链对应的受管工程的 `.claude/aie-tests/<name>.md`。aie-improve 会跑这些用例评估受管工程的 AI 协作配置是否真的起效。
 
 ## 参数
 
-- `[project]`：可选。`projects/` 下软链名。未提供则**先询问用户**（列出 `projects/` 当前可用项）。
+- `[project]`：可选。`receivers/` 下软链名。未提供则**先询问用户**（列出 `projects/` 当前可用项）。
 - `[name]`：可选。测试用例 slug（kebab-case）。未提供则交互式询问。
 
 ## 测试用例文件格式
@@ -41,8 +41,8 @@ criteria:
 ## 执行步骤
 
 1. **解析 project**
-   - 有参数 → 检查 `projects/<project>` 是软链；不存在则报错列出可用项目
-   - 无参数 → 列出 `projects/` 下所有软链，问用户选哪个
+   - 有参数 → 检查 `receivers/<project>` 是软链；不存在则报错列出可用项目
+   - 无参数 → 列出 `receivers/` 下所有软链，问用户选哪个
 
 2. **收集 name / description / prompt / criteria**
    - 任一缺失就向用户交互式询问

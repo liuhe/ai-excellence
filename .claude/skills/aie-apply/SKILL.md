@@ -6,22 +6,19 @@ user_invocable: true
 
 # /aie-apply <project>
 
-将下述规范应用到 `projects/<project>` 软链对应的被管工程：先审查现状，给出 diff，用户确认后合并写入。
+将下述规范应用到 `receivers/<project>` 软链对应的被管工程：先审查现状，给出 diff，用户确认后合并写入。
 
 ## 参数
 
-- `<project>`：必填，`projects/` 下软链名。无参数则报错并列出可用项目。
+- `<project>`：必填，`receivers/` 下软链名。无参数则报错并列出可用项目。
 
 ## 关键原则
 
 `~/.claude/CLAUDE.md` 只放极少数纯个人偏好；跨项目通用的工作规范应通过本命令推到项目级 `CLAUDE.md`，而不是堆在全局。本命令写入的就是项目级 `CLAUDE.md`，遵循这一原则。
 
-## 注意：两个 `projects/` 含义不同
+## 作用范围
 
-- **ai-excellence 的 `projects/`**：被管工程的**软链入口**（`projects/<name>` 是软链）
-- **被管工程内部的 `projects/`**：initiative 容器（`projects/<initiative>/{overview,tasks,log,design}.md`）
-
-本命令操作的对象是后者：解析 ai-excellence 的 `projects/<project>` 软链 → 进入被管工程 → 检查/写入被管工程内部的 CLAUDE.md 和 .claude/settings.json。规范里说的 `projects/<name>/` 都是指**被管工程内部的**那个 projects。
+本命令解析 ai-excellence 的 `receivers/<project>` 软链 → 进入被管工程 → 检查/写入被管工程内部的 CLAUDE.md 和 .claude/settings.json。规范里说的 `projects/<name>/`（`overview.md` / `tasks.md` / `log.md` / `design.md`）是**项目模式的 initiative 容器**约定 —— 被管工程和 ai-excellence 自身都遵守同一套。
 
 ## 要应用到被管工程的规范
 
@@ -307,7 +304,7 @@ user_invocable: true
 ## 执行步骤
 
 1. **解析参数、意图、`<aie-root>`**
-   - 检查 `projects/<project>` 存在且为软链
+   - 检查 `receivers/<project>` 存在且为软链
    - 解析软链得到真实路径 `<target>`
    - 注意用户在调用本命令时的自然语言意图（如"启用建模"、"不要建模"），保留到第 4 步使用
    - 计算 `<aie-root>`：本仓库（即 ai-excellence）在用户机器上的绝对路径。可由 `pwd`（在 ai-excellence 根目录运行命令）或 `realpath` 当前 skill 文件位置的祖父目录得到。**注意：`<aie-root>` 不再作为占位符替换进受管工程的 CLAUDE.md / skill（那些公开仓库不能含本机路径），而是写入受管工程的 `.claude/settings.local.json` 的 `aie_root` 字段；CLAUDE.md / skill 保留 `<aie-root>` 占位符不变。**

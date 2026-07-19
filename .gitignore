@@ -1,10 +1,16 @@
-projects/*
-!projects/.gitkeep
+# receivers/ = 受管工程软链入口（真身在本机他处），软链不入 git
+receivers/*
+!receivers/.gitkeep
+
+# projects/ = 子 project 源码目录（在本仓库内孵化的能力模块），入 git，无需 ignore 规则
 .claude_global
 .DS_Store
 methodology/app/node_modules/
 methodology/app/dist/
 .claude/settings.local.json
+
+# AI 观察数据 —— 本地采集/装配产物，不入 git（代码在 projects/ai-observation/）
+.aie/
 
 # 运行时由 /model-view 在受管工程上注册的模型软链属于本机状态，不入 git。
 # 用 `*` 而非 `*/` 因为 `*/` 不匹配符号链接。
